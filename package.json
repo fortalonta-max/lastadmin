@@ -6,8 +6,8 @@
 
   "scripts": {
     "dev": "tanstack-start dev",
-    "build": "tanstack-start build",
-    "start": "tanstack-start start",
+    "build": "npx tanstack-start build",
+    "start": "npx tanstack-start start",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
