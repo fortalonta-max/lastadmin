@@ -16,6 +16,7 @@ type Settings = {
   store_tagline_en: string | null;
   store_tagline_ar: string | null;
   logo_url: string | null;
+  hero_image_url: string | null;
   hero_eyebrow_en: string | null;
   hero_eyebrow_ar: string | null;
   hero_title_en: string | null;
@@ -52,6 +53,7 @@ function SettingsAdmin() {
       store_tagline_en: s.store_tagline_en ?? null,
       store_tagline_ar: s.store_tagline_ar ?? null,
       logo_url: s.logo_url ?? null,
+      hero_image_url: s.hero_image_url ?? null,
       hero_eyebrow_en: s.hero_eyebrow_en ?? null,
       hero_eyebrow_ar: s.hero_eyebrow_ar ?? null,
       hero_title_en: s.hero_title_en ?? null,
@@ -104,12 +106,24 @@ function SettingsAdmin() {
         <Input label="Tagline (AR)" value={s.store_tagline_ar ?? ""} onChange={(v) => setS({ ...s, store_tagline_ar: v })} />
       </section>
 
-      {/* ── Hero Section Text ── */}
+      {/* ── Hero Section ── */}
       <section className="mb-8 space-y-4 rounded-2xl border border-border/60 bg-card p-6">
         <div>
           <h2 className="font-display text-xl">Hero Section</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Controls the big headline on your homepage. Leave any field blank to use the default text.
+            Controls the big headline and image on your homepage. Leave any field blank to use the default.
+          </p>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-foreground">Hero image</p>
+          <ImageUpload
+            value={s.hero_image_url ?? null}
+            onChange={(url) => setS({ ...s, hero_image_url: url })}
+            folder="hero"
+          />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Replaces the default hero-cookies photo on the homepage. Recommended size: 1536 × 1920 px (portrait 4:5).
           </p>
         </div>
 

@@ -71,6 +71,8 @@ function Hero() {
     (locale === "ar" ? settings?.hero_subtitle_ar : settings?.hero_subtitle_en) ||
     t("hero.subtitle");
 
+  const heroImageSrc = (settings as any)?.hero_image_url || heroImg;
+
   return (
     <section className="relative overflow-hidden">
       <div
@@ -116,7 +118,7 @@ function Hero() {
         <div className="relative">
           <div className="aspect-[4/5] overflow-hidden rounded-3xl shadow-[var(--shadow-card)]">
             <img
-              src={heroImg}
+              src={heroImageSrc}
               alt="Stack of New York-style chocolate chip cookies"
               width={1536}
               height={1920}
