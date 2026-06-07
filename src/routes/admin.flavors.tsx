@@ -36,16 +36,15 @@ function FlavorsAdmin() {
     },
   });
   const { data: byoBoxes = [] } = useQuery({
-    queryKey: ["admin-byo-boxes"],
+    queryKey: ["admin-all-boxes"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("boxes")
-        .select("id, name_en, cookie_count")
-        .eq("type", "byo")
+        .select("id, name_en, cookie_count, type")
         .eq("is_active", true)
         .order("sort_order");
       if (error) throw error;
-      return data as { id: string; name_en: string; cookie_count: number }[];
+      return data as { id: string; name_en: string; cookie_count: number; type: string }[];
     },
   });
 
@@ -180,7 +179,7 @@ function FlavorEditor({
   onSave,
 }: {
   flavor: Partial<Flavor>;
-  boxes: { id: string; name_en: string; cookie_count: number }[];
+  boxes: { id: string; name_en: string; cookie_count: number; type: string }[];
   onClose: () => void;
   onSave: (f: Partial<Flavor>, boxPrices: Record<string, number>) => Promise<void> | void;
 }) {
@@ -222,23 +221,29 @@ function FlavorEditor({
           </div>
           {boxes.length > 0 && (
             <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-3">
-              <p className="text-xs font-semibold">Price per cookie — by box size</p>
-              <p className="text-[11px] text-muted-foreground">Overrides the default price above for each specific box.</p>
+              <p className="text-xs font-semibold">Price per cookie — by box</p>
+              <p className="text-[11px] text-muted-foreground">
+                Set a specific price for this flavor in each box. Leave blank to use the default price above.
+              </p>
               {boxes.map((box) => (
                 <div key={box.id} className="flex items-center gap-3">
                   <span className="flex-1 text-xs">
-                    {box.name_en} <span className="text-muted-foreground">({box.cookie_count} cookies)</span>
+                    {box.name_en}{" "}
+                    <span className="text-muted-foreground">({box.cookie_count} cookies)</span>{" "}
+                    <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
+                      {box.type}
+                    </span>
                   </span>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    placeholder="0.00"
+                    placeholder="default"
                     value={boxPrices[box.id] ?? ""}
                     onChange={(e) =>
                       setBoxPrices((prev) => ({ ...prev, [box.id]: Number(e.target.value) }))
                     }
-                    className="w-24 rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
+                    className="w-28 rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
                   />
                 </div>
               ))}

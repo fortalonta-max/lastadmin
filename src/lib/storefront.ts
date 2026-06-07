@@ -103,7 +103,11 @@ export async function fetchFaqs() {
 export async function fetchSettings() {
   const { data, error } = await supabase
     .from("site_settings")
-    .select("store_name, store_tagline_en, store_tagline_ar, whatsapp_number, delivery_fee, contact_email, contact_phone, contact_address, meta_pixel_id")
+    .select(
+      "store_name, store_tagline_en, store_tagline_ar, logo_url, hero_image_url, " +
+      "hero_eyebrow_en, hero_eyebrow_ar, hero_title_en, hero_title_ar, hero_subtitle_en, hero_subtitle_ar, " +
+      "whatsapp_number, delivery_fee, contact_email, contact_phone, contact_address, meta_pixel_id"
+    )
     .eq("id", 1)
     .maybeSingle();
   if (error) throw error;

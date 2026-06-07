@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Input, Textarea } from "@/routes/admin.flavors";
+import { ImageUpload } from "@/components/admin/image-upload";
 
 export const Route = createFileRoute("/admin/settings")({
   component: SettingsAdmin,
@@ -14,6 +15,14 @@ type Settings = {
   store_name: string;
   store_tagline_en: string | null;
   store_tagline_ar: string | null;
+  logo_url: string | null;
+  hero_image_url: string | null;
+  hero_eyebrow_en: string | null;
+  hero_eyebrow_ar: string | null;
+  hero_title_en: string | null;
+  hero_title_ar: string | null;
+  hero_subtitle_en: string | null;
+  hero_subtitle_ar: string | null;
   whatsapp_number: string | null;
   delivery_fee: number;
   meta_pixel_id: string | null;
@@ -43,6 +52,14 @@ function SettingsAdmin() {
       store_name: s.store_name?.trim() || "NYC Cookies",
       store_tagline_en: s.store_tagline_en ?? null,
       store_tagline_ar: s.store_tagline_ar ?? null,
+      logo_url: s.logo_url ?? null,
+      hero_image_url: s.hero_image_url ?? null,
+      hero_eyebrow_en: s.hero_eyebrow_en ?? null,
+      hero_eyebrow_ar: s.hero_eyebrow_ar ?? null,
+      hero_title_en: s.hero_title_en ?? null,
+      hero_title_ar: s.hero_title_ar ?? null,
+      hero_subtitle_en: s.hero_subtitle_en ?? null,
+      hero_subtitle_ar: s.hero_subtitle_ar ?? null,
       whatsapp_number: s.whatsapp_number ?? null,
       delivery_fee: Number(s.delivery_fee ?? 0),
       meta_pixel_id: s.meta_pixel_id ?? null,
@@ -58,23 +75,104 @@ function SettingsAdmin() {
     if (error) return toast.error(error.message);
     toast.success("Settings saved");
     qc.invalidateQueries({ queryKey: ["admin-settings"] });
-    qc.invalidateQueries({ queryKey: ["site-settings"] });
+    qc.invalidateQueries({ queryKey: ["public-settings"] });
   }
 
   return (
     <div className="max-w-2xl">
       <header className="mb-6">
         <h1 className="font-display text-3xl">Settings</h1>
-        <p className="text-sm text-muted-foreground">Store identity, contact, delivery, and Meta tracking.</p>
+        <p className="text-sm text-muted-foreground">Store identity, branding, hero content, contact, delivery, and Meta tracking.</p>
       </header>
 
-      <section className="mb-8 space-y-3 rounded-2xl border border-border/60 bg-card p-6">
-        <h2 className="font-display text-xl">Store</h2>
+      {/* ── Branding ── */}
+      <section className="mb-8 space-y-5 rounded-2xl border border-border/60 bg-card p-6">
+        <h2 className="font-display text-xl">Branding</h2>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-foreground">Logo</p>
+          <ImageUpload
+            value={s.logo_url ?? null}
+            onChange={(url) => setS({ ...s, logo_url: url })}
+            folder="logos"
+          />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Upload your logo (PNG or SVG with transparent background recommended). It replaces the cookie emoji in the header and footer.
+          </p>
+        </div>
+
         <Input label="Store name" value={s.store_name ?? ""} onChange={(v) => setS({ ...s, store_name: v })} />
         <Input label="Tagline (EN)" value={s.store_tagline_en ?? ""} onChange={(v) => setS({ ...s, store_tagline_en: v })} />
         <Input label="Tagline (AR)" value={s.store_tagline_ar ?? ""} onChange={(v) => setS({ ...s, store_tagline_ar: v })} />
       </section>
 
+      {/* ── Hero Section ── */}
+      <section className="mb-8 space-y-4 rounded-2xl border border-border/60 bg-card p-6">
+        <div>
+          <h2 className="font-display text-xl">Hero Section</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Controls the big headline and image on your homepage. Leave any field blank to use the default.
+          </p>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-foreground">Hero image</p>
+          <ImageUpload
+            value={s.hero_image_url ?? null}
+            onChange={(url) => setS({ ...s, hero_image_url: url })}
+            folder="hero"
+          />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Replaces the default hero-cookies photo on the homepage. Recommended size: 1536 × 1920 px (portrait 4:5).
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-foreground/70">English</p>
+          <Input
+            label="Eyebrow (small text above headline)"
+            value={s.hero_eyebrow_en ?? ""}
+            onChange={(v) => setS({ ...s, hero_eyebrow_en: v })}
+            placeholder="e.g. Fresh-baked, NYC-style"
+          />
+          <Input
+            label="Headline"
+            value={s.hero_title_en ?? ""}
+            onChange={(v) => setS({ ...s, hero_title_en: v })}
+            placeholder="e.g. Cookies the way New York does them."
+          />
+          <Textarea
+            label="Subtitle"
+            value={s.hero_subtitle_en ?? ""}
+            onChange={(v) => setS({ ...s, hero_subtitle_en: v })}
+            placeholder="e.g. Thick, gooey, stacked sky-high. Pick a box, choose your flavors, get them at your door."
+          />
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <p className="text-sm font-semibold text-foreground/70">العربية</p>
+          <Input
+            label="العنوان الصغير (فوق العنوان الرئيسي)"
+            value={s.hero_eyebrow_ar ?? ""}
+            onChange={(v) => setS({ ...s, hero_eyebrow_ar: v })}
+            placeholder="مثال: طازج، على الطريقة النيويوركية"
+          />
+          <Input
+            label="العنوان الرئيسي"
+            value={s.hero_title_ar ?? ""}
+            onChange={(v) => setS({ ...s, hero_title_ar: v })}
+            placeholder="مثال: كوكيز كما تصنعها نيويورك."
+          />
+          <Textarea
+            label="النص التوضيحي"
+            value={s.hero_subtitle_ar ?? ""}
+            onChange={(v) => setS({ ...s, hero_subtitle_ar: v })}
+            placeholder="مثال: سميكة، طرية، وعالية. اختر صندوقك، اختر نكهاتك، ونوصلك لباب البيت."
+          />
+        </div>
+      </section>
+
+      {/* ── Contact & Delivery ── */}
       <section className="mb-8 space-y-3 rounded-2xl border border-border/60 bg-card p-6">
         <h2 className="font-display text-xl">Contact & delivery</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -86,6 +184,7 @@ function SettingsAdmin() {
         <Input label="Delivery fee" type="number" value={String(s.delivery_fee ?? 0)} onChange={(v) => setS({ ...s, delivery_fee: Number(v) })} />
       </section>
 
+      {/* ── Meta Pixel ── */}
       <section className="mb-8 space-y-3 rounded-2xl border border-border/60 bg-card p-6">
         <h2 className="font-display text-xl">Meta Pixel & CAPI</h2>
         <Input label="Pixel ID" value={s.meta_pixel_id ?? ""} onChange={(v) => setS({ ...s, meta_pixel_id: v })} />

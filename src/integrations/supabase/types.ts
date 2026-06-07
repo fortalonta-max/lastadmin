@@ -389,7 +389,14 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           delivery_fee: number
+          hero_eyebrow_ar: string | null
+          hero_eyebrow_en: string | null
+          hero_subtitle_ar: string | null
+          hero_subtitle_en: string | null
+          hero_title_ar: string | null
+          hero_title_en: string | null
           id: number
+          logo_url: string | null
           meta_capi_token: string | null
           meta_pixel_id: string | null
           meta_test_event_code: string | null
@@ -404,7 +411,14 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           delivery_fee?: number
+          hero_eyebrow_ar?: string | null
+          hero_eyebrow_en?: string | null
+          hero_subtitle_ar?: string | null
+          hero_subtitle_en?: string | null
+          hero_title_ar?: string | null
+          hero_title_en?: string | null
           id?: number
+          logo_url?: string | null
           meta_capi_token?: string | null
           meta_pixel_id?: string | null
           meta_test_event_code?: string | null
@@ -419,7 +433,14 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           delivery_fee?: number
+          hero_eyebrow_ar?: string | null
+          hero_eyebrow_en?: string | null
+          hero_subtitle_ar?: string | null
+          hero_subtitle_en?: string | null
+          hero_title_ar?: string | null
+          hero_title_en?: string | null
           id?: number
+          logo_url?: string | null
           meta_capi_token?: string | null
           meta_pixel_id?: string | null
           meta_test_event_code?: string | null

@@ -1,14 +1,39 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, ShoppingBag, X, Globe } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
+import { fetchSettings } from "@/lib/storefront";
 import { cn } from "@/lib/utils";
+
+function BrandLogo({ logoUrl, storeName }: { logoUrl?: string | null; storeName?: string | null }) {
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt={storeName ?? "Store logo"}
+        className="h-9 w-auto max-w-[140px] object-contain"
+      />
+    );
+  }
+  return (
+    <>
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--pink)] text-ink">
+        <span className="text-lg">🍪</span>
+      </span>
+      <span className="font-display text-xl font-semibold tracking-tight">
+        {storeName ?? "NYC Cookies"}
+      </span>
+    </>
+  );
+}
 
 export function SiteHeader() {
   const { t, locale, setLocale } = useI18n();
   const { count } = useCart();
   const [open, setOpen] = useState(false);
+  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
 
   const links = [
     { to: "/", label: t("nav.home") },
@@ -23,10 +48,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--pink)] text-ink">
-            <span className="text-lg">🍪</span>
-          </span>
-          <span className="font-display text-xl font-semibold tracking-tight">NYC Cookies</span>
+          <BrandLogo logoUrl={settings?.logo_url} storeName={settings?.store_name} />
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">
@@ -106,15 +128,19 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   const { t } = useI18n();
+  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+
+  const tagline =
+    settings?.store_tagline_en ?? t("footer.tagline");
+
   return (
     <footer className="mt-20 border-t border-border/60 bg-card">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--pink)]">🍪</span>
-            <span className="font-display text-xl">NYC Cookies</span>
+            <BrandLogo logoUrl={settings?.logo_url} storeName={settings?.store_name} />
           </div>
-          <p className="mt-3 max-w-sm text-sm text-muted-foreground">{t("footer.tagline")}</p>
+          <p className="mt-3 max-w-sm text-sm text-muted-foreground">{tagline}</p>
         </div>
         <div className="text-sm">
           <p className="mb-3 font-semibold">{t("nav.boxes")}</p>
@@ -127,13 +153,13 @@ export function SiteFooter() {
         <div className="text-sm">
           <p className="mb-3 font-semibold">{t("nav.contact")}</p>
           <ul className="space-y-2 text-muted-foreground">
-            <li>hello@nyccookies.com</li>
-            <li>+1 (555) 555-5555</li>
+            <li>{settings?.contact_email ?? "hello@nyccookies.com"}</li>
+            <li>{settings?.contact_phone ?? "+1 (555) 555-5555"}</li>
           </ul>
         </div>
       </div>
       <div className="border-t border-border/60 px-4 py-5 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} NYC Cookies. {t("footer.rights")}
+        © {new Date().getFullYear()} {settings?.store_name ?? "NYC Cookies"}. {t("footer.rights")}
       </div>
     </footer>
   );
