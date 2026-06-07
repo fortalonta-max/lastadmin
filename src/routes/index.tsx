@@ -99,8 +99,10 @@ function Hero() {
               {t("cta.shop")}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
+            {/* Points to /boxes so users choose their BYO size instead of
+                being forced into the hardcoded box-of-6. */}
             <Link
-              to="/boxes/box-of-6"
+              to="/boxes"
               className="inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-card px-6 py-3 text-sm font-semibold transition-colors hover:bg-muted"
             >
               {t("cta.build")}
@@ -321,8 +323,10 @@ function BYOCallout() {
         {t("section.byo")}
       </h2>
       <p className="mx-auto mt-3 max-w-lg text-foreground/80">{t("section.byo_sub")}</p>
+      {/* Points to /boxes so users choose their BYO size instead of
+          being forced into the hardcoded box-of-6. */}
       <Link
-        to="/boxes/box-of-6"
+        to="/boxes"
         className="mt-7 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition-transform hover:-translate-y-0.5"
       >
         {t("cta.build")}

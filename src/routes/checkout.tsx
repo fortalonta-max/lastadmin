@@ -18,7 +18,7 @@ export const Route = createFileRoute("/checkout")({
 
 function CheckoutPage() {
   const { t } = useI18n();
-  const { items, subtotal, clear } = useCart();
+  const { items, isLoaded, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const submit = useServerFn(placeOrder);
 
@@ -38,9 +38,17 @@ function CheckoutPage() {
     trackPixel("InitiateCheckout", { value: subtotal, currency: "USD", num_items: items.length });
   }, [items.length, subtotal]);
 
+  // Only redirect if the cart is genuinely empty — i.e., after the
+  // initial localStorage hydration has completed (isLoaded === true).
+  // Without this guard, mobile devices redirect to /cart during the
+  // brief window where items is still [] while localStorage is being
+  // read, causing the "Box not found / checkout fails on mobile" bug.
   useEffect(() => {
-    if (items.length === 0 && !orderSubmittedRef.current) navigate({ to: "/cart" });
-  }, [items.length, navigate]);
+    if (!isLoaded) return;
+    if (items.length === 0 && !orderSubmittedRef.current) {
+      navigate({ to: "/cart" });
+    }
+  }, [isLoaded, items.length, navigate]);
 
   async function applyCoupon() {
     if (!form.coupon) return;
@@ -136,6 +144,20 @@ function CheckoutPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Show nothing (or a loader) while the cart is still hydrating from
+  // localStorage so the page doesn't flash "go to cart" on mobile.
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen">
+        <SiteHeader />
+        <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+          <p className="text-muted-foreground">Loading…</p>
+        </main>
+        <SiteFooter />
+      </div>
+    );
   }
 
   return (

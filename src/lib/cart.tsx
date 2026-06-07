@@ -29,6 +29,8 @@ export interface CartItem {
 
 interface CartCtx {
   items: CartItem[];
+  /** True once the initial localStorage read has completed. Gates redirect logic. */
+  isLoaded: boolean;
   add: (item: Omit<CartItem, "id">) => void;
   remove: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
@@ -43,21 +45,32 @@ const STORAGE_KEY = "nyc-cart-v1";
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
+  // Read from localStorage once on mount. Set isLoaded when done so
+  // consumers can distinguish "cart is genuinely empty" from "cart is
+  // still hydrating". This prevents the mobile race condition where the
+  // checkout page redirects to /cart before localStorage has been read.
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      setIsLoaded(true);
+      return;
+    }
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) setItems(JSON.parse(raw));
     } catch {
-      /* ignore */
+      /* ignore malformed data */
+    } finally {
+      setIsLoaded(true);
     }
   }, []);
 
   useEffect(() => {
+    if (!isLoaded) return; // don't overwrite storage before the first read
     if (typeof window === "undefined") return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+  }, [items, isLoaded]);
 
   const add = useCallback((item: Omit<CartItem, "id">) => {
     setItems((prev) => [...prev, { ...item, id: crypto.randomUUID() }]);
@@ -78,8 +91,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CartCtx>(() => {
     const count = items.reduce((s, i) => s + i.quantity, 0);
     const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
-    return { items, add, remove, updateQty, clear, count, subtotal };
-  }, [items, add, remove, updateQty, clear]);
+    return { items, isLoaded, add, remove, updateQty, clear, count, subtotal };
+  }, [items, isLoaded, add, remove, updateQty, clear]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
