@@ -9,6 +9,7 @@
   "start": "tanstack-start start",
   "lint": "eslint .",
   "format": "prettier --write ."
+    
 };
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
