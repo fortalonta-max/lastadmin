@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Star, ChevronDown, MessageCircle } from "lucide-react";
+import { ArrowRight, Star, ChevronDown, MessageCircle, Cookie, Layers, Truck } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
@@ -42,9 +42,11 @@ function Home() {
       <SiteHeader />
       <main>
         <Hero />
+        <HowItWorks />
         <BestSellers />
         <BoxesGrid />
         <FlavorsGrid />
+        <OurStory />
         <BYOCallout />
         <Reviews />
         <FAQ />
@@ -56,7 +58,19 @@ function Home() {
 }
 
 function Hero() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+
+  const eyebrow =
+    (locale === "ar" ? settings?.hero_eyebrow_ar : settings?.hero_eyebrow_en) ||
+    t("hero.eyebrow");
+  const title =
+    (locale === "ar" ? settings?.hero_title_ar : settings?.hero_title_en) ||
+    t("hero.title");
+  const subtitle =
+    (locale === "ar" ? settings?.hero_subtitle_ar : settings?.hero_subtitle_en) ||
+    t("hero.subtitle");
+
   return (
     <section className="relative overflow-hidden">
       <div
@@ -67,13 +81,13 @@ function Hero() {
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
-            {t("hero.eyebrow")}
+            {eyebrow}
           </p>
           <h1 className="mt-4 font-display text-5xl leading-[1.05] sm:text-6xl md:text-7xl">
-            {t("hero.title")}
+            {title}
           </h1>
           <p className="mt-5 max-w-md text-base text-foreground/75 sm:text-lg">
-            {t("hero.subtitle")}
+            {subtitle}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
@@ -115,6 +129,39 @@ function Hero() {
   );
 }
 
+function HowItWorks() {
+  const { t } = useI18n();
+  const steps = [
+    { icon: Cookie, num: "01", titleKey: "hiw.step1.title", descKey: "hiw.step1.desc" },
+    { icon: Layers, num: "02", titleKey: "hiw.step2.title", descKey: "hiw.step2.desc" },
+    { icon: Truck,  num: "03", titleKey: "hiw.step3.title", descKey: "hiw.step3.desc" },
+  ];
+  return (
+    <section className="bg-card/60 py-16">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <SectionHeader eyebrow="✦" title={t("section.how_it_works")} />
+        <div className="grid gap-6 sm:grid-cols-3">
+          {steps.map(({ icon: Icon, num, titleKey, descKey }) => (
+            <div
+              key={num}
+              className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-7"
+            >
+              <span className="absolute right-5 top-5 font-display text-5xl font-bold text-foreground/5 select-none">
+                {num}
+              </span>
+              <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--pink)]/20 text-primary">
+                <Icon className="h-5 w-5" />
+              </span>
+              <h3 className="font-display text-xl">{t(titleKey)}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(descKey)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function BestSellers() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
@@ -146,7 +193,7 @@ function BoxesGrid() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
   return (
-    <section className="bg-card/60 py-16">
+    <section className="py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <SectionHeader eyebrow="01" title={t("section.boxes")} />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -173,34 +220,88 @@ function FlavorsGrid() {
   const { t, locale } = useI18n();
   const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
   return (
+    <section className="bg-card/60 py-16">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <SectionHeader eyebrow="02" title={t("section.flavors")} />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {flavors.map((f) => (
+            <article
+              key={f.id}
+              className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-card)]"
+            >
+              <div
+                className="mb-4 aspect-square rounded-xl"
+                style={{
+                  background: f.image_url
+                    ? `url(${f.image_url}) center/cover`
+                    : "var(--gradient-pink-blue)",
+                }}
+              />
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-display text-lg leading-tight">{localizedName(f, locale)}</h3>
+                {f.is_limited_edition && <Badge variant="gold">{t("box.limited")}</Badge>}
+                {f.is_out_of_stock && <Badge variant="destructive">{t("box.out_of_stock")}</Badge>}
+              </div>
+              {f.description_en && (
+                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                  {localizedDesc(f, locale)}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OurStory() {
+  const { t } = useI18n();
+  const pillars = [
+    t("story.pillar1"),
+    t("story.pillar2"),
+    t("story.pillar3"),
+  ];
+  return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-      <SectionHeader eyebrow="02" title={t("section.flavors")} />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {flavors.map((f) => (
-          <article
-            key={f.id}
-            className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-card)]"
+      <div className="overflow-hidden rounded-3xl border border-border/60 bg-card">
+        <div className="grid md:grid-cols-2">
+          {/* Left: colour panel */}
+          <div
+            className="flex flex-col justify-between p-10 md:p-14"
+            style={{ background: "var(--gradient-pink-blue)" }}
           >
-            <div
-              className="mb-4 aspect-square rounded-xl"
-              style={{
-                background: f.image_url
-                  ? `url(${f.image_url}) center/cover`
-                  : "var(--gradient-pink-blue)",
-              }}
-            />
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-display text-lg leading-tight">{localizedName(f, locale)}</h3>
-              {f.is_limited_edition && <Badge variant="gold">{t("box.limited")}</Badge>}
-              {f.is_out_of_stock && <Badge variant="destructive">{t("box.out_of_stock")}</Badge>}
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ink/60">
+              {t("section.our_story")}
+            </p>
+            <div>
+              <h2 className="mt-6 font-display text-3xl leading-snug text-ink sm:text-4xl">
+                {t("story.heading")}
+              </h2>
+              <ul className="mt-8 space-y-3">
+                {pillars.map((p) => (
+                  <li key={p} className="flex items-center gap-3 text-sm font-medium text-ink/80">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink/40" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
             </div>
-            {f.description_en && (
-              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                {localizedDesc(f, locale)}
-              </p>
-            )}
-          </article>
-        ))}
+          </div>
+          {/* Right: body text */}
+          <div className="flex flex-col justify-center px-10 py-14 md:px-14">
+            <p className="text-base leading-relaxed text-foreground/80">
+              {t("story.body")}
+            </p>
+            <Link
+              to="/boxes"
+              className="group mt-8 inline-flex w-max items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-transform hover:-translate-y-0.5"
+            >
+              {t("cta.shop")}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -211,16 +312,16 @@ function BYOCallout() {
   return (
     <section
       className="mx-auto my-12 max-w-7xl overflow-hidden rounded-3xl px-6 py-16 text-center sm:px-12"
-      style={{ background: "var(--gradient-pink-blue)" }}
+      style={{ background: "var(--gradient-hero)" }}
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/60">03</p>
-      <h2 className="mx-auto mt-3 max-w-2xl font-display text-4xl text-ink sm:text-5xl">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">03</p>
+      <h2 className="mx-auto mt-3 max-w-2xl font-display text-4xl sm:text-5xl">
         {t("section.byo")}
       </h2>
-      <p className="mx-auto mt-3 max-w-lg text-ink/80">{t("section.byo_sub")}</p>
+      <p className="mx-auto mt-3 max-w-lg text-foreground/80">{t("section.byo_sub")}</p>
       <Link
         to="/boxes/box-of-6"
-        className="mt-7 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-cream transition-transform hover:-translate-y-0.5"
+        className="mt-7 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition-transform hover:-translate-y-0.5"
       >
         {t("cta.build")}
         <ArrowRight className="h-4 w-4" />
