@@ -43,6 +43,22 @@ const en: Dict = {
   "section.faq": "Frequently asked",
   "section.contact": "Get in touch",
 
+  "section.how_it_works": "How it works",
+  "hiw.step1.title": "Pick your box",
+  "hiw.step1.desc": "Choose from 6, 12, or 18 cookies — or let us surprise you with a chef's pick.",
+  "hiw.step2.title": "Mix your flavors",
+  "hiw.step2.desc": "Browse 9+ rotating flavors and fill your box however you like.",
+  "hiw.step3.title": "Fresh to your door",
+  "hiw.step3.desc": "We bake every order fresh and deliver it straight to you.",
+
+  "section.our_story": "Our story",
+  "story.heading": "Born in New York. Baked with obsession.",
+  "story.body":
+    "We started with one oven, one recipe, and a belief that a truly great cookie should stop you mid-bite. Every batch uses high-fat European butter, single-origin chocolate, and flour we stone-mill in-house. No shortcuts. No preservatives. Just cookies the way New York does them.",
+  "story.pillar1": "Baked fresh daily",
+  "story.pillar2": "Premium ingredients",
+  "story.pillar3": "Hand-packed with care",
+
   "box.cookies": "cookies",
   "box.from": "From",
   "box.best_seller": "Best seller",
@@ -190,6 +206,22 @@ const ar: Dict = {
   "section.reviews": "محبوب في نيويورك",
   "section.faq": "أسئلة متكررة",
   "section.contact": "تواصل معنا",
+
+  "section.how_it_works": "كيف يعمل",
+  "hiw.step1.title": "اختر صندوقك",
+  "hiw.step1.desc": "اختر من بين 6 أو 12 أو 18 كوكيز — أو دعنا نفاجئك باختيار الشيف.",
+  "hiw.step2.title": "اخلط نكهاتك",
+  "hiw.step2.desc": "تصفح أكثر من 9 نكهات متنوعة واملأ صندوقك كما تشاء.",
+  "hiw.step3.title": "طازج لبابك",
+  "hiw.step3.desc": "نخبز كل طلب طازجاً ونوصله مباشرة إليك.",
+
+  "section.our_story": "قصتنا",
+  "story.heading": "وُلد في نيويورك. خُبز بشغف.",
+  "story.body":
+    "بدأنا بفرن واحد ووصفة واحدة وإيمان بأن الكوكيز الرائعة حقاً يجب أن توقفك في كل لقمة. كل دفعة تستخدم زبدة أوروبية عالية الدسم وشوكولاتة من أصل واحد ودقيقاً نطحنه يدوياً. لا اختصارات. لا مواد حافظة. فقط كوكيز كما تصنعها نيويورك.",
+  "story.pillar1": "يُخبز طازجاً يومياً",
+  "story.pillar2": "مكونات فاخرة",
+  "story.pillar3": "يُعبّأ بعناية يدوية",
 
   "box.cookies": "كوكيز",
   "box.from": "من",
