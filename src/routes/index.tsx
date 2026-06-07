@@ -71,7 +71,7 @@ function Hero() {
     (locale === "ar" ? settings?.hero_subtitle_ar : settings?.hero_subtitle_en) ||
     t("hero.subtitle");
 
-  const heroImageSrc = (settings as any)?.hero_image_url || heroImg;
+  const heroImageSrc = settings?.hero_image_url || heroImg;
 
   return (
     <section className="relative overflow-hidden">
