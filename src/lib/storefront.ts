@@ -32,6 +32,20 @@ export type Box = {
   sort_order: number;
 };
 
+export type Product = {
+  id: string;
+  slug: string;
+  name_en: string;
+  name_ar: string | null;
+  description_en: string | null;
+  description_ar: string | null;
+  image_url: string | null;
+  price: number;
+  is_active: boolean;
+  is_best_seller: boolean;
+  sort_order: number;
+};
+
 export async function fetchFlavors() {
   const { data, error } = await supabase
     .from("flavors")
@@ -77,6 +91,32 @@ export async function fetchBoxBySlug(slug: string) {
   if (!data) return null;
   return { ...data, price: Number(data.price) } as Box & {
     box_fixed_flavors: Array<{ quantity: number; flavor_id: string; flavors: Flavor }>;
+  };
+}
+
+/** Fetch all active products ordered by sort_order. */
+export async function fetchProducts() {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) throw error;
+  return (data ?? []).map((p) => ({ ...p, price: Number(p.price) })) as Product[];
+}
+
+/** Fetch a single product by slug, including its manually-assigned flavors. */
+export async function fetchProductBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*, product_flavors(sort_order, flavor_id, flavors(*))")
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { ...data, price: Number(data.price) } as Product & {
+    product_flavors: Array<{ sort_order: number; flavor_id: string; flavors: Flavor }>;
   };
 }
 

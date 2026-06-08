@@ -7,23 +7,23 @@ import { useI18n } from "@/lib/i18n";
 import { fetchBoxes, localizedName, localizedDesc, type Box } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
-export const Route = createFileRoute("/boxes/")({
+export const Route = createFileRoute("/buildbox")({
   head: () => ({
     meta: [
-      { title: "Chef's Boxes — NYC Cookies" },
-      { name: "description", content: "Browse our chef-curated cookie boxes. Hand-picked flavors, perfectly portioned." },
-      { property: "og:title", content: "Chef's Boxes — NYC Cookies" },
-      { property: "og:description", content: "Pre-designed boxes crafted by our chef." },
+      { title: "Build Your Box — NYC Cookies" },
+      { name: "description", content: "Choose your box size and mix any flavors you like. Build your perfect NYC cookie box." },
+      { property: "og:title", content: "Build Your Box — NYC Cookies" },
+      { property: "og:description", content: "Pick your size, mix any flavors. You're the chef." },
     ],
   }),
-  component: BoxesPage,
+  component: BuildBoxPage,
 });
 
-function BoxesPage() {
+function BuildBoxPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
 
-  const boxes = allBoxes.filter((b) => b.type === "fixed");
+  const boxes = allBoxes.filter((b) => b.type === "byo");
 
   return (
     <div className="min-h-screen">
@@ -35,17 +35,15 @@ function BoxesPage() {
         >
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/60">
-              {t("box.fixed")}
+              {t("box.byo")}
             </p>
-            <h1 className="mt-2 font-display text-4xl sm:text-5xl">Chef's Boxes</h1>
-            <p className="mt-3 max-w-md text-sm text-foreground/70">
-              Pre-designed boxes crafted by our chef — hand-picked flavors, perfectly balanced.
-            </p>
+            <h1 className="mt-2 font-display text-4xl sm:text-5xl">{t("section.byo")}</h1>
+            <p className="mt-3 max-w-md text-sm text-foreground/70">{t("section.byo_sub")}</p>
             <Link
-              to="/buildbox"
+              to="/boxes"
               className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
             >
-              Prefer to choose your own flavors? Build your box <ArrowRight className="h-3.5 w-3.5" />
+              Prefer a chef-curated box? <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
@@ -54,7 +52,7 @@ function BoxesPage() {
           {isLoading ? (
             <div className="py-20 text-center text-sm text-muted-foreground">Loading…</div>
           ) : boxes.length === 0 ? (
-            <div className="py-20 text-center text-sm text-muted-foreground">No boxes available yet.</div>
+            <div className="py-20 text-center text-sm text-muted-foreground">No build-your-own boxes available yet.</div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {boxes.map((b) => (
@@ -79,7 +77,7 @@ function BoxCard({ box: b, locale, t }: { box: Box; locale: "en" | "ar"; t: (key
       <div
         className="relative aspect-[3/2] overflow-hidden sm:aspect-[4/3]"
         style={{
-          background: b.image_url ? `url(${b.image_url}) center/cover` : "var(--gradient-hero)",
+          background: b.image_url ? `url(${b.image_url}) center/cover` : "var(--gradient-pink-blue)",
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
@@ -89,7 +87,7 @@ function BoxCard({ box: b, locale, t }: { box: Box; locale: "en" | "ar"; t: (key
           </span>
         )}
         <span className="absolute right-2 top-2 sm:right-4 sm:top-4">
-          <Badge variant="gold">{t("box.fixed")}</Badge>
+          <Badge variant="blue">{t("box.byo")}</Badge>
         </span>
       </div>
       <div className="p-3 sm:p-5">
@@ -105,7 +103,7 @@ function BoxCard({ box: b, locale, t }: { box: Box; locale: "en" | "ar"; t: (key
         <div className="mt-2 flex items-center justify-between sm:mt-4">
           <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
           <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">
-            {t("cta.view")} →
+            {t("cta.build")} →
           </span>
         </div>
       </div>

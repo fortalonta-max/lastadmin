@@ -17,7 +17,7 @@ import {
   Star,
   HelpCircle,
   Settings,
-  Globe,
+  ShoppingCart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -158,6 +158,7 @@ function AdminShell() {
     { to: "/admin/orders", label: t("admin.nav.orders"), icon: ShoppingBag },
     { to: "/admin/boxes", label: t("admin.nav.boxes"), icon: Package },
     { to: "/admin/flavors", label: t("admin.nav.flavors"), icon: Cookie },
+    { to: "/admin/products", label: t("admin.nav.products"), icon: ShoppingCart },
     { to: "/admin/coupons", label: t("admin.nav.coupons"), icon: Tag },
     { to: "/admin/reviews", label: t("admin.nav.reviews"), icon: Star },
     { to: "/admin/faqs", label: t("admin.nav.faqs"), icon: HelpCircle },
