@@ -25,6 +25,7 @@ type Box = {
   type: "fixed" | "byo";
   is_active: boolean;
   is_best_seller: boolean;
+  sale_enabled: boolean;
   sort_order: number;
 };
 
@@ -58,7 +59,7 @@ function BoxesAdmin() {
         <h1 className="font-display text-3xl">Boxes</h1>
         <button
           onClick={() =>
-            setEditing({ type: "byo", is_active: true, cookie_count: 6, price: 0, sort_order: boxes.length + 1 })
+            setEditing({ type: "byo", is_active: true, cookie_count: 6, price: 0, sale_enabled: false, sort_order: boxes.length + 1 })
           }
           className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
         >
@@ -80,6 +81,7 @@ function BoxesAdmin() {
               <div className="mt-1 flex gap-1 text-[10px]">
                 {!b.is_active && <span className="rounded bg-muted px-1.5">hidden</span>}
                 {b.is_best_seller && <span className="rounded bg-[var(--pink)] px-1.5">best</span>}
+                {b.sale_enabled && <span className="rounded bg-[var(--gold)] px-1.5">sale</span>}
               </div>
             </div>
             <div className="flex flex-col gap-1">
@@ -142,6 +144,7 @@ function BoxEditor({
       type: (b.type ?? "byo") as "fixed" | "byo",
       is_active: b.is_active ?? true,
       is_best_seller: b.is_best_seller ?? false,
+      sale_enabled: b.sale_enabled ?? false,
       sort_order: Number(b.sort_order ?? 0),
     };
     const res = b.id
@@ -200,6 +203,20 @@ function BoxEditor({
             <Toggle label="Active" checked={b.is_active ?? true} onChange={(v) => setB({ ...b, is_active: v })} />
             <Toggle label="Best seller" checked={b.is_best_seller ?? false} onChange={(v) => setB({ ...b, is_best_seller: v })} />
           </div>
+          <div className="text-sm">
+            <Toggle label="Sale price" checked={b.sale_enabled ?? false} onChange={(v) => setB({ ...b, sale_enabled: v })} />
+          </div>
+
+          {b.sale_enabled && (
+            <div className="rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/5 p-3 text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground">Sale price active</p>
+              <p className="mt-1">
+                The crossed-out price shown to customers is calculated as:{" "}
+                <strong>highest flavor price × {b.cookie_count ?? "?"} cookies</strong>. The visible sale price is the
+                box's current price field above.
+              </p>
+            </div>
+          )}
 
           {b.type === "fixed" && (
             <div className="rounded-xl border border-border bg-muted/30 p-3">

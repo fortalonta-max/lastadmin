@@ -11,6 +11,8 @@ import { fetchSettings } from "@/lib/storefront";
 import { placeOrder } from "@/lib/orders.functions";
 import { trackPixel } from "@/lib/meta-pixel";
 
+const FREE_SHIPPING_THRESHOLD = 750;
+
 export const Route = createFileRoute("/checkout")({
   head: () => ({ meta: [{ title: "Checkout — NYC Cookies" }] }),
   component: CheckoutPage,
@@ -23,7 +25,7 @@ function CheckoutPage() {
   const submit = useServerFn(placeOrder);
 
   const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
-  const deliveryFee = Number(settings?.delivery_fee ?? 0);
+  const baseDeliveryFee = Number(settings?.delivery_fee ?? 0);
 
   const [form, setForm] = useState({ name: "", phone: "", address: "", notes: "", coupon: "" });
   const [discount, setDiscount] = useState(0);
@@ -31,6 +33,8 @@ function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const orderSubmittedRef = useRef(false);
 
+  const isFreeShipping = subtotal - discount >= FREE_SHIPPING_THRESHOLD;
+  const deliveryFee = isFreeShipping ? 0 : baseDeliveryFee;
   const total = Math.max(0, subtotal - discount + deliveryFee);
 
   useEffect(() => {
@@ -210,9 +214,18 @@ function CheckoutPage() {
               {discount > 0 && (
                 <Row label={t("cart.discount")} value={`− ${formatCurrency(discount)}`} />
               )}
-              <Row label={t("cart.delivery")} value={formatCurrency(deliveryFee)} />
+              <Row
+                label={t("cart.delivery")}
+                value={isFreeShipping ? t("cart.free_shipping") : formatCurrency(deliveryFee)}
+                highlight={isFreeShipping}
+              />
               <Row label={t("cart.total")} value={formatCurrency(total)} bold />
             </dl>
+            {isFreeShipping && (
+              <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-xs font-medium text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                🎉 You qualify for free delivery!
+              </p>
+            )}
             <button
               type="submit"
               disabled={submitting}
@@ -270,11 +283,21 @@ function Field({
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  highlight?: boolean;
+}) {
   return (
     <div className={`flex justify-between ${bold ? "border-t border-border/60 pt-2 font-display text-base" : "text-muted-foreground"}`}>
       <span>{label}</span>
-      <span className={bold ? "text-foreground" : ""}>{value}</span>
+      <span className={bold ? "text-foreground" : highlight ? "font-semibold text-green-600" : ""}>{value}</span>
     </div>
   );
 }

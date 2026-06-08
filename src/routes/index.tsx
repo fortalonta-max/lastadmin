@@ -6,9 +6,12 @@ import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchBoxes,
+  fetchFlavors,
   fetchSettings,
   localizedName,
   localizedDesc,
+  type Box,
+  type Flavor,
 } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 import heroImg from "@/assets/hero-cookies.jpg";
@@ -133,14 +136,18 @@ function Hero() {
 function BestSellers() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
+  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
 
   const best = boxes.filter((b) => b.is_best_seller);
   if (best.length === 0) return null;
 
+  const flavorPrices = flavors.map((f) => f.price).filter((p) => p > 0);
+  const minFlavorPrice = flavorPrices.length > 0 ? Math.min(...flavorPrices) : 0;
+  const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <SectionHeader eyebrow="★" title={t("section.best_sellers")} />
-      {/* 2 cols on mobile, 3 cols on large screens */}
       <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
         {best.map((b) => (
           <BoxCard
@@ -150,6 +157,8 @@ function BestSellers() {
             t={t}
             badge={t("box.best_seller")}
             badgeVariant="pink"
+            minFlavorPrice={minFlavorPrice}
+            maxFlavorPrice={maxFlavorPrice}
           />
         ))}
       </div>
@@ -162,14 +171,18 @@ function BestSellers() {
 function OurProducts() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
+  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
 
   if (boxes.length === 0) return null;
+
+  const flavorPrices = flavors.map((f) => f.price).filter((p) => p > 0);
+  const minFlavorPrice = flavorPrices.length > 0 ? Math.min(...flavorPrices) : 0;
+  const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
 
   return (
     <section className="bg-card/60 py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <SectionHeader eyebrow="★★" title="Our Products" />
-        {/* 2 cols on mobile, 3 cols on large screens */}
         <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
           {boxes.map((b) => (
             <BoxCard
@@ -185,6 +198,8 @@ function OurProducts() {
                   : t("box.byo")
               }
               badgeVariant={b.is_best_seller ? "pink" : b.type === "fixed" ? "gold" : "blue"}
+              minFlavorPrice={minFlavorPrice}
+              maxFlavorPrice={maxFlavorPrice}
             />
           ))}
         </div>
@@ -303,21 +318,29 @@ function BoxCard({
   t,
   badge,
   badgeVariant,
+  minFlavorPrice,
+  maxFlavorPrice,
 }: {
-  box: ReturnType<typeof fetchBoxes> extends Promise<infer T> ? (T extends Array<infer U> ? U : never) : never;
+  box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
   badge?: string;
   badgeVariant?: "pink" | "blue" | "gold";
+  minFlavorPrice: number;
+  maxFlavorPrice: number;
 }) {
   const isByo = b.type === "byo";
+
+  const startingPrice = isByo && minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
+  const comparePrice =
+    isByo && b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;
+
   return (
     <Link
-      to={isByo ? "/buildbox" : "/boxes/$slug"}
-      params={isByo ? undefined : { slug: b.slug }}
+      to="/boxes/$slug"
+      params={{ slug: b.slug }}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[var(--shadow-card)]"
     >
-      {/* Image — taller on desktop, slightly shorter on mobile to fit 2-col */}
       <div
         className="relative aspect-[3/2] w-full overflow-hidden sm:aspect-[4/3]"
         style={{
@@ -346,7 +369,25 @@ function BoxCard({
           </p>
         )}
         <div className="mt-auto flex items-end justify-between pt-2 sm:pt-4">
-          <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
+          <div>
+            {isByo && startingPrice !== null ? (
+              <>
+                {comparePrice !== null && (
+                  <p className="text-sm font-bold text-destructive line-through sm:text-base">
+                    {formatCurrency(comparePrice)}
+                  </p>
+                )}
+                <p className="font-display text-base sm:text-2xl">
+                  <span className="text-xs font-normal text-muted-foreground sm:text-sm">
+                    {t("box.starting_from")}{" "}
+                  </span>
+                  {formatCurrency(startingPrice)}
+                </p>
+              </>
+            ) : (
+              <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
+            )}
+          </div>
           <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">
             {t("cta.view")} →
           </span>

@@ -15,6 +15,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { CartProvider } from "@/lib/cart";
 import { MetaPixelLoader } from "@/components/meta-pixel-loader";
 import { Toaster } from "@/components/ui/sonner";
+import { WhatsAppFloatingButton } from "@/components/site-chrome";
 
 function NotFoundComponent() {
   return (
@@ -130,6 +131,7 @@ function RootComponent() {
           <MetaPixelLoader />
           <Outlet />
           <Toaster />
+          <WhatsAppFloatingButton />
         </CartProvider>
       </I18nProvider>
     </QueryClientProvider>

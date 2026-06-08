@@ -30,6 +30,7 @@ export type Box = {
   is_active: boolean;
   is_best_seller: boolean;
   sort_order: number;
+  sale_enabled?: boolean | null;
 };
 
 export type Product = {

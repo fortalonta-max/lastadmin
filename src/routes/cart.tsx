@@ -4,6 +4,8 @@ import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { useCart, formatCurrency } from "@/lib/cart";
 import { useI18n } from "@/lib/i18n";
 
+const FREE_SHIPPING_THRESHOLD = 750;
+
 export const Route = createFileRoute("/cart")({
   head: () => ({ meta: [{ title: "Cart — NYC Cookies" }] }),
   component: CartPage,
@@ -12,6 +14,8 @@ export const Route = createFileRoute("/cart")({
 function CartPage() {
   const { t } = useI18n();
   const { items, remove, updateQty, subtotal } = useCart();
+
+  const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
 
   return (
     <div className="min-h-screen">
@@ -103,7 +107,28 @@ function CartPage() {
                   <dt className="text-muted-foreground">{t("cart.subtotal")}</dt>
                   <dd>{formatCurrency(subtotal)}</dd>
                 </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">{t("cart.delivery")}</dt>
+                  <dd>
+                    {isFreeShipping ? (
+                      <span className="font-semibold text-green-600">{t("cart.free_shipping")}</span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">
+                        Free over {formatCurrency(FREE_SHIPPING_THRESHOLD)}
+                      </span>
+                    )}
+                  </dd>
+                </div>
               </dl>
+              {!isFreeShipping && (
+                <p className="mt-3 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                  Add{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatCurrency(FREE_SHIPPING_THRESHOLD - subtotal)}
+                  </span>{" "}
+                  more for free delivery 🚚
+                </p>
+              )}
               <Link
                 to="/checkout"
                 className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"

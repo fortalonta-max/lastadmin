@@ -13,16 +13,16 @@ function BrandLogo({ logoUrl, storeName }: { logoUrl?: string | null; storeName?
       <img
         src={logoUrl}
         alt={storeName ?? "Store logo"}
-        className="h-12 w-auto max-w-[180px] object-contain"
+        className="h-40 w-auto max-w-[480px] object-contain"
       />
     );
   }
   return (
     <>
-      <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--pink)] text-ink">
-        <span className="text-xl">🍪</span>
+      <span className="grid h-32 w-32 place-items-center rounded-full bg-[var(--pink)] text-ink">
+        <span className="text-5xl">🍪</span>
       </span>
-      <span className="font-display text-2xl font-semibold tracking-tight">
+      <span className="font-display text-5xl font-semibold tracking-tight">
         {storeName ?? "NYC Cookies"}
       </span>
     </>
@@ -38,9 +38,8 @@ export function SiteHeader() {
   const links = [
     { to: "/", label: t("nav.home") },
     { to: "/boxes", label: t("nav.boxes") },
+    { to: "/buildbox", label: t("nav.buildbox") },
     { to: "/flavors", label: t("nav.flavors") },
-    { to: "/#reviews", label: t("nav.reviews") },
-    { to: "/#faq", label: t("nav.faq") },
     { to: "/#contact", label: t("nav.contact") },
   ];
 
@@ -52,7 +51,7 @@ export function SiteHeader() {
       </div>
 
       {/* Main nav — approximately twice original h-16, logo centered */}
-      <div className="relative mx-auto flex h-32 max-w-7xl items-center justify-between px-4 sm:px-6">
+      <div className="relative mx-auto flex h-48 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: desktop nav links */}
         <nav className="hidden items-center gap-7 md:flex">
           {links.map((l) => (
@@ -71,7 +70,7 @@ export function SiteHeader() {
         {/* Logo — absolutely centered horizontally */}
         <Link
           to="/"
-          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2.5"
+          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-3"
         >
           <BrandLogo logoUrl={settings?.logo_url} storeName={settings?.store_name} />
         </Link>
@@ -231,5 +230,25 @@ export function SiteFooter() {
         </div>
       </div>
     </footer>
+  );
+}
+
+export function WhatsAppFloatingButton() {
+  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+  if (!settings?.whatsapp_number) return null;
+  const href = `https://wa.me/${settings.whatsapp_number.replace(/\D/g, "")}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Chat with us on WhatsApp"
+      className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-[var(--shadow-card)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] sm:bottom-8 sm:right-8 sm:h-14 sm:w-14"
+      style={{ background: "#25D366" }}
+    >
+      <svg viewBox="0 0 32 32" className="h-7 w-7 fill-white" aria-hidden>
+        <path d="M16 2C8.268 2 2 8.268 2 16c0 2.444.658 4.733 1.806 6.708L2 30l7.522-1.773A13.94 13.94 0 0 0 16 30c7.732 0 14-6.268 14-14S23.732 2 16 2zm0 25.5a11.44 11.44 0 0 1-5.836-1.6l-.418-.248-4.464 1.052 1.082-4.344-.272-.43A11.46 11.46 0 0 1 4.5 16C4.5 9.596 9.596 4.5 16 4.5S27.5 9.596 27.5 16 22.404 27.5 16 27.5zm6.29-8.578c-.346-.173-2.042-1.006-2.358-1.12-.316-.115-.546-.173-.776.174-.23.346-.89 1.12-1.09 1.35-.2.23-.4.26-.746.087-.346-.174-1.46-.538-2.782-1.716-1.028-.917-1.722-2.049-1.923-2.395-.2-.346-.022-.533.15-.705.155-.155.346-.404.52-.605.173-.202.23-.347.346-.578.115-.23.058-.433-.03-.606-.087-.173-.776-1.872-1.063-2.563-.28-.673-.564-.582-.776-.593l-.662-.012c-.23 0-.606.087-.923.433s-1.21 1.178-1.21 2.873 1.238 3.332 1.41 3.562c.173.23 2.437 3.72 5.906 5.214.825.356 1.468.568 1.97.727.827.263 1.581.226 2.176.137.664-.1 2.042-.834 2.33-1.638.287-.804.287-1.493.2-1.638-.086-.144-.316-.23-.662-.403z" />
+      </svg>
+    </a>
   );
 }

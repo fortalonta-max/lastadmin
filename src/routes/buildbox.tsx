@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
-import { fetchBoxes, localizedName, localizedDesc, type Box } from "@/lib/storefront";
+import { fetchBoxes, fetchFlavors, localizedName, localizedDesc, type Box } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/buildbox")({
@@ -22,8 +22,13 @@ export const Route = createFileRoute("/buildbox")({
 function BuildBoxPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
+  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
 
   const boxes = allBoxes.filter((b) => b.type === "byo");
+
+  const flavorPrices = flavors.map((f) => f.price).filter((p) => p > 0);
+  const minFlavorPrice = flavorPrices.length > 0 ? Math.min(...flavorPrices) : 0;
+  const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
 
   return (
     <div className="min-h-screen">
@@ -56,7 +61,14 @@ function BuildBoxPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {boxes.map((b) => (
-                <BoxCard key={b.id} box={b} locale={locale} t={t} />
+                <BoxCard
+                  key={b.id}
+                  box={b}
+                  locale={locale}
+                  t={t}
+                  minFlavorPrice={minFlavorPrice}
+                  maxFlavorPrice={maxFlavorPrice}
+                />
               ))}
             </div>
           )}
@@ -67,7 +79,23 @@ function BuildBoxPage() {
   );
 }
 
-function BoxCard({ box: b, locale, t }: { box: Box; locale: "en" | "ar"; t: (key: string) => string }) {
+function BoxCard({
+  box: b,
+  locale,
+  t,
+  minFlavorPrice,
+  maxFlavorPrice,
+}: {
+  box: Box;
+  locale: "en" | "ar";
+  t: (key: string) => string;
+  minFlavorPrice: number;
+  maxFlavorPrice: number;
+}) {
+  const startingPrice = minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
+  const comparePrice =
+    b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;
+
   return (
     <Link
       to="/boxes/$slug"
@@ -101,7 +129,25 @@ function BoxCard({ box: b, locale, t }: { box: Box; locale: "en" | "ar"; t: (key
           </p>
         )}
         <div className="mt-2 flex items-center justify-between sm:mt-4">
-          <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
+          <div>
+            {startingPrice !== null ? (
+              <>
+                {comparePrice !== null && (
+                  <p className="text-sm font-bold text-destructive line-through sm:text-base">
+                    {formatCurrency(comparePrice)}
+                  </p>
+                )}
+                <p className="font-display text-base sm:text-2xl">
+                  <span className="text-xs font-normal text-muted-foreground sm:text-sm">
+                    {t("box.starting_from")}{" "}
+                  </span>
+                  {formatCurrency(startingPrice)}
+                </p>
+              </>
+            ) : (
+              <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
+            )}
+          </div>
           <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">
             {t("cta.build")} →
           </span>

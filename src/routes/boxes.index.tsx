@@ -4,16 +4,16 @@ import { ArrowRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
-import { fetchBoxes, localizedName, localizedDesc, type Box } from "@/lib/storefront";
+import { fetchBoxes, fetchFlavors, localizedName, localizedDesc, type Box } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/boxes/")({
   head: () => ({
     meta: [
-      { title: "Chef's Boxes — NYC Cookies" },
-      { name: "description", content: "Browse our chef-curated cookie boxes. Hand-picked flavors, perfectly portioned." },
-      { property: "og:title", content: "Chef's Boxes — NYC Cookies" },
-      { property: "og:description", content: "Pre-designed boxes crafted by our chef." },
+      { title: "All Boxes — NYC Cookies" },
+      { name: "description", content: "Browse all our cookie boxes — chef-curated picks and build-your-own options." },
+      { property: "og:title", content: "All Boxes — NYC Cookies" },
+      { property: "og:description", content: "Chef's picks and build-your-own cookie boxes." },
     ],
   }),
   component: BoxesPage,
@@ -22,8 +22,11 @@ export const Route = createFileRoute("/boxes/")({
 function BoxesPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
+  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
 
-  const boxes = allBoxes.filter((b) => b.type === "fixed");
+  const flavorPrices = flavors.map((f) => f.price).filter((p) => p > 0);
+  const minFlavorPrice = flavorPrices.length > 0 ? Math.min(...flavorPrices) : 0;
+  const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
 
   return (
     <div className="min-h-screen">
@@ -35,17 +38,17 @@ function BoxesPage() {
         >
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/60">
-              {t("box.fixed")}
+              {t("section.boxes")}
             </p>
-            <h1 className="mt-2 font-display text-4xl sm:text-5xl">Chef's Boxes</h1>
+            <h1 className="mt-2 font-display text-4xl sm:text-5xl">All Boxes</h1>
             <p className="mt-3 max-w-md text-sm text-foreground/70">
-              Pre-designed boxes crafted by our chef — hand-picked flavors, perfectly balanced.
+              Chef-curated picks and build-your-own options — all in one place.
             </p>
             <Link
               to="/buildbox"
               className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
             >
-              Prefer to choose your own flavors? Build your box <ArrowRight className="h-3.5 w-3.5" />
+              {t("cta.build")} <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
@@ -53,12 +56,19 @@ function BoxesPage() {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
           {isLoading ? (
             <div className="py-20 text-center text-sm text-muted-foreground">Loading…</div>
-          ) : boxes.length === 0 ? (
+          ) : allBoxes.length === 0 ? (
             <div className="py-20 text-center text-sm text-muted-foreground">No boxes available yet.</div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-              {boxes.map((b) => (
-                <BoxCard key={b.id} box={b} locale={locale} t={t} />
+              {allBoxes.map((b) => (
+                <BoxCard
+                  key={b.id}
+                  box={b}
+                  locale={locale}
+                  t={t}
+                  minFlavorPrice={minFlavorPrice}
+                  maxFlavorPrice={maxFlavorPrice}
+                />
               ))}
             </div>
           )}
@@ -69,7 +79,25 @@ function BoxesPage() {
   );
 }
 
-function BoxCard({ box: b, locale, t }: { box: Box; locale: "en" | "ar"; t: (key: string) => string }) {
+function BoxCard({
+  box: b,
+  locale,
+  t,
+  minFlavorPrice,
+  maxFlavorPrice,
+}: {
+  box: Box;
+  locale: "en" | "ar";
+  t: (key: string) => string;
+  minFlavorPrice: number;
+  maxFlavorPrice: number;
+}) {
+  const isByo = b.type === "byo";
+
+  const startingPrice = isByo && minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
+  const comparePrice =
+    isByo && b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;
+
   return (
     <Link
       to="/boxes/$slug"
@@ -89,7 +117,9 @@ function BoxCard({ box: b, locale, t }: { box: Box; locale: "en" | "ar"; t: (key
           </span>
         )}
         <span className="absolute right-2 top-2 sm:right-4 sm:top-4">
-          <Badge variant="gold">{t("box.fixed")}</Badge>
+          <Badge variant={isByo ? "blue" : "gold"}>
+            {isByo ? t("box.byo") : t("box.fixed")}
+          </Badge>
         </span>
       </div>
       <div className="p-3 sm:p-5">
@@ -103,7 +133,25 @@ function BoxCard({ box: b, locale, t }: { box: Box; locale: "en" | "ar"; t: (key
           </p>
         )}
         <div className="mt-2 flex items-center justify-between sm:mt-4">
-          <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
+          <div>
+            {isByo && startingPrice !== null ? (
+              <>
+                {comparePrice !== null && (
+                  <p className="text-sm font-bold text-destructive line-through sm:text-base">
+                    {formatCurrency(comparePrice)}
+                  </p>
+                )}
+                <p className="font-display text-base sm:text-2xl">
+                  <span className="text-xs font-normal text-muted-foreground sm:text-sm">
+                    {t("box.starting_from")}{" "}
+                  </span>
+                  {formatCurrency(startingPrice)}
+                </p>
+              </>
+            ) : (
+              <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
+            )}
+          </div>
           <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">
             {t("cta.view")} →
           </span>
