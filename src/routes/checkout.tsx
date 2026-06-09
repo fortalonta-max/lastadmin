@@ -14,7 +14,7 @@ import { trackPixel } from "@/lib/meta-pixel";
 const FREE_SHIPPING_THRESHOLD = 750;
 
 export const Route = createFileRoute("/checkout")({
-  head: () => ({ meta: [{ title: "Checkout — NYC Cookies" }] }),
+  head: () => ({ meta: [{ title: "Checkout — Leen Bakery" }] }),
   component: CheckoutPage,
 });
 
@@ -25,7 +25,7 @@ function CheckoutPage() {
   const submit = useServerFn(placeOrder);
 
   const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
-  const baseDeliveryFee = Number(settings?.delivery_fee ?? 0);
+  const baseDeliveryFee = Number(settings?.delivery_fee ?? 90);
 
   const [form, setForm] = useState({ name: "", phone: "", address: "", notes: "", coupon: "" });
   const [discount, setDiscount] = useState(0);
@@ -42,11 +42,6 @@ function CheckoutPage() {
     trackPixel("InitiateCheckout", { value: subtotal, currency: "USD", num_items: items.length });
   }, [items.length, subtotal]);
 
-  // Only redirect if the cart is genuinely empty — i.e., after the
-  // initial localStorage hydration has completed (isLoaded === true).
-  // Without this guard, mobile devices redirect to /cart during the
-  // brief window where items is still [] while localStorage is being
-  // read, causing the "Box not found / checkout fails on mobile" bug.
   useEffect(() => {
     if (!isLoaded) return;
     if (items.length === 0 && !orderSubmittedRef.current) {
@@ -113,8 +108,6 @@ function CheckoutPage() {
         eventId,
       );
 
-      // Save the full invoice to sessionStorage so the confirmation page
-      // can build a rich WhatsApp message even before the DB query resolves.
       if (typeof window !== "undefined") {
         const invoice = {
           order_number: res.order_number,
@@ -150,8 +143,6 @@ function CheckoutPage() {
     }
   }
 
-  // Show nothing (or a loader) while the cart is still hydrating from
-  // localStorage so the page doesn't flash "go to cart" on mobile.
   if (!isLoaded) {
     return (
       <div className="min-h-screen">
@@ -242,58 +233,28 @@ function CheckoutPage() {
 }
 
 function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-  required,
-  textarea,
+  label, value, onChange, type = "text", required, textarea,
 }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-  required?: boolean;
-  textarea?: boolean;
+  label: string; value: string; onChange: (v: string) => void;
+  type?: string; required?: boolean; textarea?: boolean;
 }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium">
-        {label}
-        {required && <span className="text-destructive"> *</span>}
+        {label}{required && <span className="text-destructive"> *</span>}
       </span>
       {textarea ? (
-        <textarea
-          required={required}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none ring-ring/20 focus:ring-2"
-        />
+        <textarea required={required} value={value} onChange={(e) => onChange(e.target.value)} rows={3}
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none ring-ring/20 focus:ring-2" />
       ) : (
-        <input
-          required={required}
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none ring-ring/20 focus:ring-2"
-        />
+        <input required={required} type={type} value={value} onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none ring-ring/20 focus:ring-2" />
       )}
     </label>
   );
 }
 
-function Row({
-  label,
-  value,
-  bold,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  bold?: boolean;
-  highlight?: boolean;
-}) {
+function Row({ label, value, bold, highlight }: { label: string; value: string; bold?: boolean; highlight?: boolean }) {
   return (
     <div className={`flex justify-between ${bold ? "border-t border-border/60 pt-2 font-display text-base" : "text-muted-foreground"}`}>
       <span>{label}</span>

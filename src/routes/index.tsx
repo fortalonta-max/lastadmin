@@ -11,21 +11,19 @@ import {
   localizedName,
   localizedDesc,
   type Box,
-  type Flavor,
 } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
-import heroImg from "@/assets/hero-cookies.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "NYC Cookies — Build your own box of NYC-style cookies" },
+      { title: "Leen Bakery — Build your own box of NYC-style cookies" },
       {
         name: "description",
         content:
-          "Hand-baked New York-style cookies, delivered fresh. Build your own box from 9+ flavors. Best sellers, limited editions, and chef-curated picks.",
+          "Hand-baked New York-style cookies by Leen Bakery, delivered fresh. Build your own box from 9+ flavors.",
       },
-      { property: "og:title", content: "NYC Cookies — Build your own cookie box" },
+      { property: "og:title", content: "Leen Bakery — Build your own cookie box" },
       {
         property: "og:description",
         content: "Thick, gooey, NYC-style. Pick your size, mix any flavors.",
@@ -55,7 +53,10 @@ function Home() {
 
 function Hero() {
   const { t, locale } = useI18n();
-  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: fetchSettings,
+  });
 
   const eyebrow =
     (locale === "ar" ? settings?.hero_eyebrow_ar : settings?.hero_eyebrow_en) ||
@@ -67,7 +68,8 @@ function Hero() {
     (locale === "ar" ? settings?.hero_subtitle_ar : settings?.hero_subtitle_en) ||
     t("hero.subtitle");
 
-  const heroImageSrc = settings?.hero_image_url || heroImg;
+  // Only use the URL from settings — no local asset fallback
+  const heroImageUrl = settings?.hero_image_url ?? null;
 
   return (
     <section className="relative overflow-hidden">
@@ -111,15 +113,21 @@ function Hero() {
             <span className="font-medium text-foreground/70">4.9 from 800+ reviews</span>
           </div>
         </div>
+
+        {/* Hero image: render only after settings have loaded */}
         <div className="relative">
           <div className="aspect-[4/5] overflow-hidden rounded-3xl shadow-[var(--shadow-card)]">
-            <img
-              src={heroImageSrc}
-              alt="Stack of New York-style chocolate chip cookies"
-              width={1536}
-              height={1920}
-              className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-            />
+            {isLoading || !heroImageUrl ? (
+              <div className="h-full w-full bg-transparent" aria-hidden />
+            ) : (
+              <img
+                src={heroImageUrl}
+                alt="Stack of New York-style chocolate chip cookies"
+                width={1536}
+                height={1920}
+                className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+              />
+            )}
           </div>
           <div className="absolute -bottom-4 -left-4 rounded-2xl border border-border/60 bg-card px-5 py-3 shadow-[var(--shadow-card)]">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fresh today</p>
@@ -182,7 +190,7 @@ function OurProducts() {
   return (
     <section className="bg-card/60 py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <SectionHeader eyebrow="★★" title="Our Products" />
+        <SectionHeader eyebrow="★★" title={t("section.products")} />
         <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
           {boxes.map((b) => (
             <BoxCard
@@ -211,8 +219,23 @@ function OurProducts() {
 // ── Our Story ─────────────────────────────────────────────────────────────────
 
 function OurStory() {
-  const { t } = useI18n();
-  const pillars = [t("story.pillar1"), t("story.pillar2"), t("story.pillar3")];
+  const { t, locale } = useI18n();
+  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+
+  // Use settings values; fall back to i18n strings only if settings haven't loaded yet
+  const heading =
+    (locale === "ar" ? settings?.story_heading_ar : settings?.story_heading_en) ||
+    t("story.heading");
+  const body =
+    (locale === "ar" ? settings?.story_body_ar : settings?.story_body_en) ||
+    t("story.body");
+
+  const pillars = [
+    (locale === "ar" ? settings?.story_pillar1_ar : settings?.story_pillar1_en) || t("story.pillar1"),
+    (locale === "ar" ? settings?.story_pillar2_ar : settings?.story_pillar2_en) || t("story.pillar2"),
+    (locale === "ar" ? settings?.story_pillar3_ar : settings?.story_pillar3_en) || t("story.pillar3"),
+  ].filter(Boolean);
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <div className="overflow-hidden rounded-3xl border border-border/60 bg-card">
@@ -226,7 +249,7 @@ function OurStory() {
             </p>
             <div>
               <h2 className="mt-6 font-display text-3xl leading-snug text-ink sm:text-4xl">
-                {t("story.heading")}
+                {heading}
               </h2>
               <ul className="mt-8 space-y-3">
                 {pillars.map((p) => (
@@ -239,7 +262,7 @@ function OurStory() {
             </div>
           </div>
           <div className="flex flex-col justify-center px-10 py-14 md:px-14">
-            <p className="text-base leading-relaxed text-foreground/80">{t("story.body")}</p>
+            <p className="text-base leading-relaxed text-foreground/80">{body}</p>
             <Link
               to="/boxes"
               className="group mt-8 inline-flex w-max items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
@@ -263,9 +286,9 @@ function Contact() {
     <section id="contact" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <SectionHeader eyebrow="04" title={t("section.contact")} />
       <div className="grid gap-4 md:grid-cols-3">
-        <ContactCard label="Email" value={settings?.contact_email ?? "hello@nyccookies.com"} />
-        <ContactCard label="Phone" value={settings?.contact_phone ?? "+1 (555) 555-5555"} />
-        <ContactCard label="Address" value={settings?.contact_address ?? "New York, NY"} />
+        <ContactCard label="Email" value={settings?.contact_email ?? "leendahban@gmail.com"} />
+        <ContactCard label="Phone" value={settings?.contact_phone ?? "01070487228"} />
+        <ContactCard label="Address" value={settings?.contact_address ?? "Egypt – Cairo – New Cairo – Fifth Settlement"} />
       </div>
     </section>
   );
@@ -330,7 +353,6 @@ function BoxCard({
   maxFlavorPrice: number;
 }) {
   const isByo = b.type === "byo";
-
   const startingPrice = isByo && minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
   const comparePrice =
     isByo && b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;

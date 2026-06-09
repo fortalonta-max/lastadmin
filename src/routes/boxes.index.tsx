@@ -10,9 +10,9 @@ import { formatCurrency } from "@/lib/cart";
 export const Route = createFileRoute("/boxes/")({
   head: () => ({
     meta: [
-      { title: "All Boxes — NYC Cookies" },
+      { title: "All Boxes — Leen Bakery" },
       { name: "description", content: "Browse all our cookie boxes — chef-curated picks and build-your-own options." },
-      { property: "og:title", content: "All Boxes — NYC Cookies" },
+      { property: "og:title", content: "All Boxes — Leen Bakery" },
       { property: "og:description", content: "Chef's picks and build-your-own cookie boxes." },
     ],
   }),
@@ -93,7 +93,6 @@ function BoxCard({
   maxFlavorPrice: number;
 }) {
   const isByo = b.type === "byo";
-
   const startingPrice = isByo && minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
   const comparePrice =
     isByo && b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;

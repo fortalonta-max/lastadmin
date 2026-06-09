@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n";
 const FREE_SHIPPING_THRESHOLD = 750;
 
 export const Route = createFileRoute("/cart")({
-  head: () => ({ meta: [{ title: "Cart — NYC Cookies" }] }),
+  head: () => ({ meta: [{ title: "Cart — Leen Bakery" }] }),
   component: CartPage,
 });
 
@@ -113,7 +113,7 @@ function CartPage() {
                     {isFreeShipping ? (
                       <span className="font-semibold text-green-600">{t("cart.free_shipping")}</span>
                     ) : (
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-xs text-muted-foreground">
                         Free over {formatCurrency(FREE_SHIPPING_THRESHOLD)}
                       </span>
                     )}

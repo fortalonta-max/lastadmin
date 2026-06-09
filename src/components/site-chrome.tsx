@@ -7,7 +7,63 @@ import { useCart } from "@/lib/cart";
 import { fetchSettings } from "@/lib/storefront";
 import { cn } from "@/lib/utils";
 
-function BrandLogo({ logoUrl, storeName }: { logoUrl?: string | null; storeName?: string | null }) {
+// ── Announcement bar ───────────────────────────────────────────────────────────
+
+function AnnouncementBar() {
+  const { locale } = useI18n();
+  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+
+  if (!settings?.announcement_enabled) return null;
+
+  const text =
+    (locale === "ar" ? settings.announcement_text_ar : settings.announcement_text_en) ||
+    settings.announcement_text_en ||
+    "";
+
+  if (!text) return null;
+
+  // Repeat the text segment many times; doubled to create a seamless 50 % scroll loop
+  const segment = Array.from({ length: 6 }, (_, i) => (
+    <span key={i} className="inline-flex items-center gap-8 px-6">
+      {text}
+      <span className="text-foreground/30">✦</span>
+    </span>
+  ));
+
+  return (
+    <div className="overflow-hidden border-b border-border/40 bg-primary/10 py-1.5 text-xs font-medium text-foreground/80">
+      {/* keyframes injected once — no global CSS required */}
+      <style>{`@keyframes announcement-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}`}</style>
+      <div
+        className="inline-flex whitespace-nowrap"
+        style={{ animation: "announcement-ticker 30s linear infinite" }}
+        aria-label={text}
+      >
+        {segment}{segment}
+      </div>
+    </div>
+  );
+}
+
+// ── Logo ───────────────────────────────────────────────────────────────────────
+
+// isLoading: settings query has not resolved yet — render nothing, no fallback
+function BrandLogo({
+  logoUrl,
+  storeName,
+  isLoading,
+}: {
+  logoUrl?: string | null;
+  storeName?: string | null;
+  isLoading?: boolean;
+}) {
+  // While settings are still being fetched, render an invisible placeholder
+  // that preserves the same height so the header layout doesn't shift.
+  if (isLoading) {
+    return <span className="block h-40 w-40 opacity-0" aria-hidden />;
+  }
+
+  // Settings loaded — show whatever logo_url was configured
   if (logoUrl) {
     return (
       <img
@@ -17,23 +73,25 @@ function BrandLogo({ logoUrl, storeName }: { logoUrl?: string | null; storeName?
       />
     );
   }
+
+  // Settings loaded but no logo configured — show text name only (no emoji fallback)
   return (
-    <>
-      <span className="grid h-32 w-32 place-items-center rounded-full bg-[var(--pink)] text-ink">
-        <span className="text-5xl">🍪</span>
-      </span>
-      <span className="font-display text-5xl font-semibold tracking-tight">
-        {storeName ?? "NYC Cookies"}
-      </span>
-    </>
+    <span className="font-display text-5xl font-semibold tracking-tight">
+      {storeName ?? ""}
+    </span>
   );
 }
+
+// ── Header ─────────────────────────────────────────────────────────────────────
 
 export function SiteHeader() {
   const { t, locale, setLocale } = useI18n();
   const { count } = useCart();
   const [open, setOpen] = useState(false);
-  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: fetchSettings,
+  });
 
   const links = [
     { to: "/", label: t("nav.home") },
@@ -45,12 +103,10 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-xl">
-      {/* Announcement bar */}
-      <div className="border-b border-border/40 bg-primary/10 px-4 py-2 text-center text-xs font-medium text-foreground/80">
-        Same-day delivery until 8:00 PM. Free delivery on orders over EGP 750.
-      </div>
+      {/* Dynamic scrolling announcement bar */}
+      <AnnouncementBar />
 
-      {/* Main nav — approximately twice original h-16, logo centered */}
+      {/* Main nav */}
       <div className="relative mx-auto flex h-48 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: desktop nav links */}
         <nav className="hidden items-center gap-7 md:flex">
@@ -72,7 +128,11 @@ export function SiteHeader() {
           to="/"
           className="absolute left-1/2 flex -translate-x-1/2 items-center gap-3"
         >
-          <BrandLogo logoUrl={settings?.logo_url} storeName={settings?.store_name} />
+          <BrandLogo
+            logoUrl={settings?.logo_url}
+            storeName={settings?.store_name}
+            isLoading={isLoading}
+          />
         </Link>
 
         {/* Right: action buttons */}
@@ -156,11 +216,16 @@ export function SiteHeader() {
   );
 }
 
+// ── Footer ─────────────────────────────────────────────────────────────────────
+
 export function SiteFooter() {
   const { t } = useI18n();
-  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: fetchSettings,
+  });
 
-  const tagline = settings?.store_tagline_en ?? t("footer.tagline");
+  const tagline = settings?.store_tagline_en ?? (isLoading ? "" : t("footer.tagline"));
 
   return (
     <footer className="mt-16 border-t border-border/60 bg-card">
@@ -169,7 +234,11 @@ export function SiteFooter() {
           {/* Brand column */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2.5">
-              <BrandLogo logoUrl={settings?.logo_url} storeName={settings?.store_name} />
+              <BrandLogo
+                logoUrl={settings?.logo_url}
+                storeName={settings?.store_name}
+                isLoading={isLoading}
+              />
             </div>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">{tagline}</p>
             {settings?.whatsapp_number && (
@@ -213,10 +282,8 @@ export function SiteFooter() {
                     {settings.contact_email}
                   </a>
                 </li>
-              ) : (
-                <li>hello@nyccookies.com</li>
-              )}
-              <li>{settings?.contact_phone ?? "+1 (555) 555-5555"}</li>
+              ) : null}
+              <li>{settings?.contact_phone}</li>
               {settings?.contact_address && <li>{settings.contact_address}</li>}
             </ul>
           </div>
@@ -225,13 +292,15 @@ export function SiteFooter() {
 
       <div className="border-t border-border/60 px-4 py-5">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>© {new Date().getFullYear()} {settings?.store_name ?? "NYC Cookies"}. {t("footer.rights")}</span>
+          <span>© {new Date().getFullYear()} {isLoading ? "" : (settings?.store_name ?? "Leen Bakery")}. {t("footer.rights")}</span>
           <Link to="/#contact" className="hover:text-foreground">{t("nav.contact")}</Link>
         </div>
       </div>
     </footer>
   );
 }
+
+// ── WhatsApp floating button ───────────────────────────────────────────────────
 
 export function WhatsAppFloatingButton() {
   const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
@@ -243,7 +312,7 @@ export function WhatsAppFloatingButton() {
       target="_blank"
       rel="noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-[var(--shadow-card)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] sm:bottom-8 sm:right-8 sm:h-14 sm:w-14"
+      className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-[var(--shadow-card)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] sm:bottom-8 sm:right-8"
       style={{ background: "#25D366" }}
     >
       <svg viewBox="0 0 32 32" className="h-7 w-7 fill-white" aria-hidden>

@@ -46,10 +46,7 @@ function BoxesAdmin() {
   async function remove(id: string) {
     if (!confirm("Delete box?")) return;
     const { error } = await supabase.from("boxes").delete().eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["admin-boxes"] });
   }
 

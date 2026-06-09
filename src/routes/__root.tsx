@@ -82,13 +82,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "NYC Cookies — Fresh-baked New York-style cookies" },
+      { title: "Leen Bakery — Fresh-baked NYC-style cookies" },
       {
         name: "description",
-        content:
-          "Hand-baked NYC-style cookies. Build your own box, mix any flavors, delivered fresh.",
+        content: "Hand-baked NYC-style cookies by Leen Bakery. Build your own box, mix any flavors, delivered fresh.",
       },
-      { property: "og:title", content: "NYC Cookies" },
+      { property: "og:title", content: "Leen Bakery" },
       { property: "og:description", content: "Build your own box. Mix any flavors. Delivered fresh." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

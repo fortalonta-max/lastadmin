@@ -31,10 +31,9 @@ const en: Dict = {
   "cta.view": "View",
   "cta.continue_shopping": "Continue shopping",
 
-  "hero.eyebrow": "Fresh-baked, NYC-style",
-  "hero.title": "Cookies the way New York does them.",
-  "hero.subtitle":
-    "Thick, gooey, stacked sky-high. Pick a box, choose your flavors, get them at your door.",
+  "hero.eyebrow": "Bake Share Smile",
+  "hero.title": "Fresh Out of the Oven",
+  "hero.subtitle": "Every cookie is baked fresh daily. Choose your favorites and we'll deliver them straight to your door.",
 
   "section.best_sellers": "Best sellers",
   "section.boxes": "Cookie boxes",
@@ -102,16 +101,14 @@ const en: Dict = {
   "order.number": "Order #",
   "order.whatsapp": "Send order via WhatsApp to confirm it",
 
-  "footer.tagline": "Hand-baked daily in New York.",
+  "footer.tagline": "Leen Bakery NYC-style cookies",
   "footer.rights": "All rights reserved.",
 
-  // Admin shell
   "admin.title": "Admin",
   "admin.verifying": "Verifying access…",
   "admin.sign_out": "Sign out",
   "admin.language": "Language",
 
-  // Admin nav
   "admin.nav.overview": "Overview",
   "admin.nav.orders": "Orders",
   "admin.nav.boxes": "Boxes",
@@ -122,7 +119,6 @@ const en: Dict = {
   "admin.nav.faqs": "FAQs",
   "admin.nav.settings": "Settings",
 
-  // Admin common
   "admin.save": "Save",
   "admin.cancel": "Cancel",
   "admin.delete": "Delete",
@@ -132,7 +128,6 @@ const en: Dict = {
   "admin.new": "New",
   "admin.no_data": "No data yet.",
 
-  // Admin overview
   "admin.ov.title": "Overview",
   "admin.ov.subtitle": "Snapshot of your store.",
   "admin.ov.stat_orders": "Orders",
@@ -143,7 +138,6 @@ const en: Dict = {
   "admin.ov.view_all": "View all →",
   "admin.ov.no_orders": "No pending orders.",
 
-  // Admin orders
   "admin.ord.title": "Orders",
   "admin.ord.col_hash": "#",
   "admin.ord.col_customer": "Customer",
@@ -161,7 +155,6 @@ const en: Dict = {
   "admin.ord.notes": "Notes",
   "admin.ord.status": "Status",
 
-  // Admin coupons
   "admin.coup.title": "Coupons",
   "admin.coup.new": "New coupon",
   "admin.coup.col_code": "Code",
@@ -205,9 +198,9 @@ const ar: Dict = {
   "cta.view": "عرض",
   "cta.continue_shopping": "متابعة التسوق",
 
-  "hero.eyebrow": "طازج، على الطريقة النيويوركية",
-  "hero.title": "كوكيز كما تصنعها نيويورك.",
-  "hero.subtitle": "سميكة، طرية، وعالية. اختر صندوقك، اختر نكهاتك، ونوصلك لباب البيت.",
+  "hero.eyebrow": "اخبز شارك ابتسم",
+  "hero.title": "طازج من الفرن",
+  "hero.subtitle": "كل كوكيز يُخبز طازجاً يومياً. اختر مفضلاتك وسنوصلها إلى بابك.",
 
   "section.best_sellers": "الأكثر مبيعاً",
   "section.boxes": "صناديق الكوكيز",
@@ -275,16 +268,14 @@ const ar: Dict = {
   "order.number": "طلب رقم ",
   "order.whatsapp": "أرسل الطلب عبر واتساب لتأكيده",
 
-  "footer.tagline": "نخبز يومياً في نيويورك.",
+  "footer.tagline": "لين بيكري كوكيز نيويورك",
   "footer.rights": "جميع الحقوق محفوظة.",
 
-  // Admin shell
   "admin.title": "الإدارة",
   "admin.verifying": "جارٍ التحقق من الصلاحية…",
   "admin.sign_out": "تسجيل الخروج",
   "admin.language": "اللغة",
 
-  // Admin nav
   "admin.nav.overview": "نظرة عامة",
   "admin.nav.orders": "الطلبات",
   "admin.nav.boxes": "الصناديق",
@@ -295,7 +286,6 @@ const ar: Dict = {
   "admin.nav.faqs": "الأسئلة الشائعة",
   "admin.nav.settings": "الإعدادات",
 
-  // Admin common
   "admin.save": "حفظ",
   "admin.cancel": "إلغاء",
   "admin.delete": "حذف",
@@ -305,7 +295,6 @@ const ar: Dict = {
   "admin.new": "جديد",
   "admin.no_data": "لا توجد بيانات بعد.",
 
-  // Admin overview
   "admin.ov.title": "نظرة عامة",
   "admin.ov.subtitle": "ملخص متجرك.",
   "admin.ov.stat_orders": "الطلبات",
@@ -316,7 +305,6 @@ const ar: Dict = {
   "admin.ov.view_all": "← عرض الكل",
   "admin.ov.no_orders": "لا توجد طلبات معلقة.",
 
-  // Admin orders
   "admin.ord.title": "الطلبات",
   "admin.ord.col_hash": "#",
   "admin.ord.col_customer": "العميل",
@@ -334,7 +322,6 @@ const ar: Dict = {
   "admin.ord.notes": "الملاحظات",
   "admin.ord.status": "الحالة",
 
-  // Admin coupons
   "admin.coup.title": "الكوبونات",
   "admin.coup.new": "كوبون جديد",
   "admin.coup.col_code": "الكود",

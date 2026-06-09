@@ -10,9 +10,9 @@ import { formatCurrency } from "@/lib/cart";
 export const Route = createFileRoute("/buildbox")({
   head: () => ({
     meta: [
-      { title: "Build Your Box — NYC Cookies" },
-      { name: "description", content: "Choose your box size and mix any flavors you like. Build your perfect NYC cookie box." },
-      { property: "og:title", content: "Build Your Box — NYC Cookies" },
+      { title: "Build Your Box — Leen Bakery" },
+      { name: "description", content: "Choose your box size and mix any flavors you like. Build your perfect cookie box." },
+      { property: "og:title", content: "Build Your Box — Leen Bakery" },
       { property: "og:description", content: "Pick your size, mix any flavors. You're the chef." },
     ],
   }),
