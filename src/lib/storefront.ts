@@ -55,6 +55,7 @@ export type SiteSettings = {
   store_tagline_ar: string;
   logo_url: string;
   hero_image_url: string;
+  hero_images: string[];
   hero_eyebrow_en: string;
   hero_eyebrow_ar: string;
   hero_title_en: string;
@@ -78,22 +79,24 @@ export type SiteSettings = {
   story_pillar2_ar: string;
   story_pillar3_en: string;
   story_pillar3_ar: string;
-  // Announcement bar
+  // Fixed delivery bar (baby pink, always visible)
+  delivery_bar_text_en: string;
+  delivery_bar_text_ar: string;
+  // Announcement bar (baby blue scrolling)
   announcement_enabled: boolean;
   announcement_text_en: string;
   announcement_text_ar: string;
 };
 
-// ── Default settings (hardcoded from admin/settings) ─────────────────────────
-// These are used as fallback values so the storefront is fully populated
-// even before the Supabase query resolves, and on first deploy before
-// the site_settings row is created.
+// ── Defaults ──────────────────────────────────────────────────────────────────
+
 const DEFAULT_SETTINGS: SiteSettings = {
   store_name: "Leen Bakery",
   store_tagline_en: "Leen Bakery NYC-style cookies",
   store_tagline_ar: "لين بيكري كوكيز نيويورك",
   logo_url: "https://i.postimg.cc/x8ft8MhN/wmremove-transformed-removebg-preview-(1).png",
   hero_image_url: "https://i.postimg.cc/CKV3Zwfg/wmremove-transformed-(8).png",
+  hero_images: [],
   hero_eyebrow_en: "Bake Share Smile",
   hero_eyebrow_ar: "اخبز شارك ابتسم",
   hero_title_en: "Fresh Out of the Oven",
@@ -106,7 +109,6 @@ const DEFAULT_SETTINGS: SiteSettings = {
   contact_phone: "01070487228",
   contact_address: "Egypt – Cairo – New Cairo – Fifth Settlement",
   meta_pixel_id: null,
-  // Our Story
   story_heading_en: "Born in New York. Baked with obsession.",
   story_heading_ar: "وُلد في نيويورك. خُبز بشغف.",
   story_body_en:
@@ -119,7 +121,8 @@ const DEFAULT_SETTINGS: SiteSettings = {
   story_pillar2_ar: "مكونات فاخرة",
   story_pillar3_en: "Hand-packed with care",
   story_pillar3_ar: "يُعبّأ بعناية يدوية",
-  // Announcement bar
+  delivery_bar_text_en: "Same-day delivery until 8:00 PM  ·  Free delivery on orders over EGP 750",
+  delivery_bar_text_ar: "توصيل في نفس اليوم حتى 8 مساءً  ·  توصيل مجاني للطلبات فوق 750 جنيه",
   announcement_enabled: false,
   announcement_text_en: "Same-day delivery until 8:00 PM. Free delivery on orders over EGP 750.",
   announcement_text_ar: "توصيل في نفس اليوم حتى 8 مساءً. توصيل مجاني للطلبات فوق 750 جنيه.",
@@ -129,25 +132,26 @@ export async function fetchSettings(): Promise<SiteSettings> {
   const { data, error } = await supabase
     .from("site_settings")
     .select(
-      "store_name, store_tagline_en, store_tagline_ar, logo_url, hero_image_url, " +
+      "store_name, store_tagline_en, store_tagline_ar, logo_url, hero_image_url, hero_images, " +
       "hero_eyebrow_en, hero_eyebrow_ar, hero_title_en, hero_title_ar, hero_subtitle_en, hero_subtitle_ar, " +
       "whatsapp_number, delivery_fee, contact_email, contact_phone, contact_address, meta_pixel_id, " +
       "story_heading_en, story_heading_ar, story_body_en, story_body_ar, " +
       "story_pillar1_en, story_pillar1_ar, story_pillar2_en, story_pillar2_ar, story_pillar3_en, story_pillar3_ar, " +
-      "announcement_enabled, announcement_text_en, announcement_text_ar"
+      "announcement_enabled, announcement_text_en, announcement_text_ar, " +
+      "delivery_bar_text_en, delivery_bar_text_ar"
     )
     .eq("id", 1)
     .maybeSingle();
 
   if (error || !data) return { ...DEFAULT_SETTINGS };
 
-  // Merge: DB values take priority; fall back to defaults for any null/missing fields
   return {
     store_name: data.store_name ?? DEFAULT_SETTINGS.store_name,
     store_tagline_en: data.store_tagline_en ?? DEFAULT_SETTINGS.store_tagline_en,
     store_tagline_ar: data.store_tagline_ar ?? DEFAULT_SETTINGS.store_tagline_ar,
     logo_url: data.logo_url ?? DEFAULT_SETTINGS.logo_url,
     hero_image_url: data.hero_image_url ?? DEFAULT_SETTINGS.hero_image_url,
+    hero_images: Array.isArray(data.hero_images) ? (data.hero_images as string[]) : [],
     hero_eyebrow_en: data.hero_eyebrow_en ?? DEFAULT_SETTINGS.hero_eyebrow_en,
     hero_eyebrow_ar: data.hero_eyebrow_ar ?? DEFAULT_SETTINGS.hero_eyebrow_ar,
     hero_title_en: data.hero_title_en ?? DEFAULT_SETTINGS.hero_title_en,
@@ -160,7 +164,6 @@ export async function fetchSettings(): Promise<SiteSettings> {
     contact_phone: data.contact_phone ?? DEFAULT_SETTINGS.contact_phone,
     contact_address: data.contact_address ?? DEFAULT_SETTINGS.contact_address,
     meta_pixel_id: data.meta_pixel_id ?? DEFAULT_SETTINGS.meta_pixel_id,
-    // Our Story
     story_heading_en: data.story_heading_en ?? DEFAULT_SETTINGS.story_heading_en,
     story_heading_ar: data.story_heading_ar ?? DEFAULT_SETTINGS.story_heading_ar,
     story_body_en: data.story_body_en ?? DEFAULT_SETTINGS.story_body_en,
@@ -171,10 +174,11 @@ export async function fetchSettings(): Promise<SiteSettings> {
     story_pillar2_ar: data.story_pillar2_ar ?? DEFAULT_SETTINGS.story_pillar2_ar,
     story_pillar3_en: data.story_pillar3_en ?? DEFAULT_SETTINGS.story_pillar3_en,
     story_pillar3_ar: data.story_pillar3_ar ?? DEFAULT_SETTINGS.story_pillar3_ar,
-    // Announcement bar
     announcement_enabled: data.announcement_enabled ?? DEFAULT_SETTINGS.announcement_enabled,
     announcement_text_en: data.announcement_text_en ?? DEFAULT_SETTINGS.announcement_text_en,
     announcement_text_ar: data.announcement_text_ar ?? DEFAULT_SETTINGS.announcement_text_ar,
+    delivery_bar_text_en: data.delivery_bar_text_en ?? DEFAULT_SETTINGS.delivery_bar_text_en,
+    delivery_bar_text_ar: data.delivery_bar_text_ar ?? DEFAULT_SETTINGS.delivery_bar_text_ar,
   };
 }
 
@@ -188,7 +192,6 @@ export async function fetchFlavors() {
   return (data ?? []) as Flavor[];
 }
 
-/** Returns a map of flavor_id → box-specific price for the given box. */
 export async function fetchFlavorPricesForBox(boxId: string): Promise<Record<string, number>> {
   const { data, error } = await supabase
     .from("flavor_box_prices")

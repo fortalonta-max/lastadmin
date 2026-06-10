@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSettings, type SiteSettings } from "@/lib/storefront";
 import { ImageUpload } from "@/components/admin/image-upload";
@@ -11,7 +12,7 @@ export const Route = createFileRoute("/admin/settings")({
   component: SettingsAdmin,
 });
 
-// ── Section wrapper ────────────────────────────────────────────────────────────
+// ── Shared UI primitives ───────────────────────────────────────────────────────
 
 function Section({
   title,
@@ -34,8 +35,6 @@ function Section({
     </div>
   );
 }
-
-// ── Bilingual row: EN + AR side by side ────────────────────────────────────────
 
 function BilingualRow({
   label,
@@ -74,6 +73,86 @@ function BilingualRow({
   );
 }
 
+// ── Hero images gallery ────────────────────────────────────────────────────────
+
+function HeroImagesGallery({
+  images,
+  onChange,
+}: {
+  images: string[];
+  onChange: (images: string[]) => void;
+}) {
+  // Key trick: bump this to unmount/remount the ImageUpload after each add,
+  // so it resets back to an empty picker state.
+  const [uploadKey, setUploadKey] = useState(0);
+
+  function remove(idx: number) {
+    onChange(images.filter((_, i) => i !== idx));
+  }
+
+  function add(url: string | null | undefined) {
+    if (!url) return;
+    onChange([...images, url]);
+    setUploadKey((k) => k + 1);
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Current images */}
+      {images.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {images.map((url, i) => (
+            <div key={url + i} className="group relative">
+              <img
+                src={url}
+                alt={`Hero slide ${i + 1}`}
+                className="aspect-[4/5] w-full rounded-xl object-cover"
+              />
+              {/* Order badge */}
+              <span className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {i + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-destructive text-white opacity-0 transition-opacity group-hover:opacity-100"
+                aria-label="Remove image"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add new image */}
+      <div className="rounded-xl border border-dashed border-border/60 p-3">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Plus className="h-3.5 w-3.5" />
+          Add image to carousel
+        </p>
+        <ImageUpload
+          key={uploadKey}
+          value={null}
+          onChange={add}
+          folder="hero"
+        />
+      </div>
+
+      {images.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          No carousel images yet. Add at least one above, or the hero will fall back to the single image set in the Hero section.
+        </p>
+      )}
+      {images.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {images.length} image{images.length !== 1 ? "s" : ""} · auto-advances every 5 s · hover to remove
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 function SettingsAdmin() {
@@ -86,7 +165,6 @@ function SettingsAdmin() {
   const [form, setForm] = useState<SiteSettings | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Seed the form once settings are fetched
   useEffect(() => {
     if (loaded && !form) setForm({ ...loaded });
   }, [loaded, form]);
@@ -108,6 +186,7 @@ function SettingsAdmin() {
           store_tagline_ar: form.store_tagline_ar,
           logo_url: form.logo_url || null,
           hero_image_url: form.hero_image_url || null,
+          hero_images: form.hero_images,
           hero_eyebrow_en: form.hero_eyebrow_en,
           hero_eyebrow_ar: form.hero_eyebrow_ar,
           hero_title_en: form.hero_title_en,
@@ -120,7 +199,6 @@ function SettingsAdmin() {
           contact_phone: form.contact_phone,
           contact_address: form.contact_address,
           meta_pixel_id: form.meta_pixel_id || null,
-          // Our Story
           story_heading_en: form.story_heading_en,
           story_heading_ar: form.story_heading_ar,
           story_body_en: form.story_body_en,
@@ -131,7 +209,8 @@ function SettingsAdmin() {
           story_pillar2_ar: form.story_pillar2_ar,
           story_pillar3_en: form.story_pillar3_en,
           story_pillar3_ar: form.story_pillar3_ar,
-          // Announcement bar
+          delivery_bar_text_en: form.delivery_bar_text_en,
+          delivery_bar_text_ar: form.delivery_bar_text_ar,
           announcement_enabled: form.announcement_enabled,
           announcement_text_en: form.announcement_text_en,
           announcement_text_ar: form.announcement_text_ar,
@@ -156,6 +235,7 @@ function SettingsAdmin() {
 
   return (
     <div className="space-y-6">
+      {/* Header row */}
       <div className="flex items-center justify-between">
         <h1 className="font-display text-3xl">Settings</h1>
         <button
@@ -168,24 +248,14 @@ function SettingsAdmin() {
       </div>
 
       {/* ── Branding ─────────────────────────────────────────────────── */}
-      <Section
-        title="Branding"
-        description="Store name, tagline, and logo shown across the site."
-      >
+      <Section title="Branding" description="Store name, tagline, and logo.">
         <ImageUpload
           value={form.logo_url}
           onChange={(url) => set("logo_url", url ?? "")}
           folder="branding"
         />
-        <p className="text-xs text-muted-foreground">
-          Upload your logo (PNG or SVG with transparent background recommended).
-        </p>
-        <Input
-          label="Store name"
-          value={form.store_name}
-          onChange={(v) => set("store_name", v)}
-          required
-        />
+        <p className="text-xs text-muted-foreground">PNG or SVG with transparent background recommended.</p>
+        <Input label="Store name" value={form.store_name} onChange={(v) => set("store_name", v)} required />
         <BilingualRow
           label="Tagline"
           enValue={form.store_tagline_en}
@@ -198,7 +268,7 @@ function SettingsAdmin() {
       {/* ── Hero Section ─────────────────────────────────────────────── */}
       <Section
         title="Hero Section"
-        description="Controls the big headline and image on your homepage."
+        description="Headline, subtitle, and fallback image shown on the homepage when no carousel images are set."
       >
         <ImageUpload
           value={form.hero_image_url}
@@ -206,7 +276,7 @@ function SettingsAdmin() {
           folder="hero"
         />
         <p className="text-xs text-muted-foreground">
-          Recommended size: 1536 × 1920 px (portrait 4:5).
+          This is the <strong>fallback</strong> image. To show a rotating carousel instead, add images in the Hero Carousel section below.
         </p>
         <BilingualRow
           label="Eyebrow (small text above headline)"
@@ -232,11 +302,80 @@ function SettingsAdmin() {
         />
       </Section>
 
-      {/* ── Our Story ────────────────────────────────────────────────── */}
+      {/* ── Hero Carousel ────────────────────────────────────────────── */}
       <Section
-        title="Our Story"
-        description="Displayed in the Our Story section on the homepage."
+        title="Hero Carousel"
+        description="Upload multiple images to rotate automatically in the hero section (every 5 s). When images are set here they replace the single fallback image above."
       >
+        <HeroImagesGallery
+          images={form.hero_images}
+          onChange={(imgs) => set("hero_images", imgs)}
+        />
+      </Section>
+
+      {/* ── Delivery Bar ─────────────────────────────────────────────── */}
+      <Section
+        title="Delivery Bar"
+        description="The fixed baby-pink bar at the very top of every page."
+      >
+        <div
+          className="rounded-lg px-4 py-2 text-xs font-semibold"
+          style={{ background: "#FCE4EC", color: "#AD1457", border: "1px solid #F8BBD9" }}
+        >
+          🩷 Baby-pink bar — always visible, text below is what visitors see
+        </div>
+        <BilingualRow
+          label="Delivery bar text"
+          enValue={form.delivery_bar_text_en}
+          arValue={form.delivery_bar_text_ar}
+          onEnChange={(v) => set("delivery_bar_text_en", v)}
+          onArChange={(v) => set("delivery_bar_text_ar", v)}
+        />
+      </Section>
+
+      {/* ── Announcement Bar ─────────────────────────────────────────── */}
+      <Section
+        title="Announcement Bar"
+        description={`A scrolling baby-blue ticker shown beneath the delivery bar at the top of every page. Use it for special offers, weekly deals, or any announcement.`}
+      >
+        {/* Color preview */}
+        <div
+          className="rounded-lg px-4 py-2 text-xs font-semibold"
+          style={{ background: "#E3F2FD", color: "#0D47A1", border: "1px solid #BBDEFB" }}
+        >
+          🟦 Baby-blue scrolling bar — visible on all pages when enabled
+        </div>
+
+        <Toggle
+          label="Enable announcement bar"
+          checked={form.announcement_enabled}
+          onChange={(v) => set("announcement_enabled", v)}
+        />
+
+        {form.announcement_enabled && (
+          <>
+            {/* Live preview */}
+            <div
+              className="overflow-hidden rounded-lg px-4 py-1.5 text-xs font-medium italic"
+              style={{ background: "#E3F2FD", color: "#0D47A1", border: "1px solid #BBDEFB" }}
+            >
+              Preview: {form.announcement_text_en || "…"}
+            </div>
+
+            <BilingualRow
+              label="Announcement text"
+              enValue={form.announcement_text_en}
+              arValue={form.announcement_text_ar}
+              onEnChange={(v) => set("announcement_text_en", v)}
+              onArChange={(v) => set("announcement_text_ar", v)}
+              textarea
+            />
+          </>
+        )}
+      </Section>
+
+      {/* ── Our Story ────────────────────────────────────────────────── */}
+      <Section title="Our Story" description="Displayed in the Our Story section on the homepage.">
         <BilingualRow
           label="Heading"
           enValue={form.story_heading_en}
@@ -276,66 +415,15 @@ function SettingsAdmin() {
         />
       </Section>
 
-      {/* ── Announcement Bar ─────────────────────────────────────────── */}
-      <Section
-        title="Announcement Bar"
-        description="A scrolling ticker shown at the top of every page. Use it for promotions, delivery notices, or any announcement."
-      >
-        <Toggle
-          label="Enable announcement bar"
-          checked={form.announcement_enabled}
-          onChange={(v) => set("announcement_enabled", v)}
-        />
-        {form.announcement_enabled && (
-          <>
-            <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-2 text-xs text-foreground/70">
-              <span className="font-semibold">Preview: </span>
-              <span className="italic">{form.announcement_text_en || "…"}</span>
-            </div>
-            <BilingualRow
-              label="Announcement text"
-              enValue={form.announcement_text_en}
-              arValue={form.announcement_text_ar}
-              onEnChange={(v) => set("announcement_text_en", v)}
-              onArChange={(v) => set("announcement_text_ar", v)}
-              textarea
-            />
-          </>
-        )}
-      </Section>
-
       {/* ── Contact & Delivery ───────────────────────────────────────── */}
       <Section title="Contact & Delivery">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input
-            label="Contact phone"
-            value={form.contact_phone}
-            onChange={(v) => set("contact_phone", v)}
-          />
-          <Input
-            label="WhatsApp number (E.164)"
-            value={form.whatsapp_number}
-            onChange={(v) => set("whatsapp_number", v)}
-            placeholder="+201234567890"
-          />
+          <Input label="Contact phone" value={form.contact_phone} onChange={(v) => set("contact_phone", v)} />
+          <Input label="WhatsApp number (E.164)" value={form.whatsapp_number} onChange={(v) => set("whatsapp_number", v)} placeholder="+201234567890" />
         </div>
-        <Input
-          label="Contact email"
-          value={form.contact_email}
-          onChange={(v) => set("contact_email", v)}
-          type="email"
-        />
-        <Input
-          label="Address"
-          value={form.contact_address}
-          onChange={(v) => set("contact_address", v)}
-        />
-        <Input
-          label="Delivery fee (EGP)"
-          value={String(form.delivery_fee)}
-          onChange={(v) => set("delivery_fee", Number(v) || 0)}
-          type="number"
-        />
+        <Input label="Contact email" value={form.contact_email} onChange={(v) => set("contact_email", v)} type="email" />
+        <Input label="Address" value={form.contact_address} onChange={(v) => set("contact_address", v)} />
+        <Input label="Delivery fee (EGP)" value={String(form.delivery_fee)} onChange={(v) => set("delivery_fee", Number(v) || 0)} type="number" />
       </Section>
 
       {/* ── Advanced ─────────────────────────────────────────────────── */}

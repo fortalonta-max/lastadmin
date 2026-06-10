@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
@@ -13,6 +14,7 @@ import {
   type Box,
 } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -68,8 +70,38 @@ function Hero() {
     (locale === "ar" ? settings?.hero_subtitle_ar : settings?.hero_subtitle_en) ||
     t("hero.subtitle");
 
-  // Only use the URL from settings — no local asset fallback
-  const heroImageUrl = settings?.hero_image_url ?? null;
+  // Build the carousel slide list:
+  // prefer hero_images array; fall back to the single hero_image_url
+  const slides: string[] = (() => {
+    if (!settings) return [];
+    if (settings.hero_images.length > 0) return settings.hero_images;
+    if (settings.hero_image_url) return [settings.hero_image_url];
+    return [];
+  })();
+
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  // Auto-advance every 5 s when there are multiple slides
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const id = setInterval(
+      () => setActiveIdx((i) => (i + 1) % slides.length),
+      5000,
+    );
+    return () => clearInterval(id);
+  }, [slides.length]);
+
+  // Keep index in bounds if slides list shrinks
+  useEffect(() => {
+    if (slides.length > 0 && activeIdx >= slides.length) setActiveIdx(0);
+  }, [slides.length, activeIdx]);
+
+  function prev() {
+    setActiveIdx((i) => (i - 1 + slides.length) % slides.length);
+  }
+  function next() {
+    setActiveIdx((i) => (i + 1) % slides.length);
+  }
 
   return (
     <section className="relative overflow-hidden">
@@ -79,6 +111,7 @@ function Hero() {
         aria-hidden
       />
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28 lg:py-32">
+        {/* Text content */}
         <div className="flex flex-col">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
             {eyebrow}
@@ -114,21 +147,65 @@ function Hero() {
           </div>
         </div>
 
-        {/* Hero image: render only after settings have loaded */}
+        {/* Hero image carousel */}
         <div className="relative">
           <div className="aspect-[4/5] overflow-hidden rounded-3xl shadow-[var(--shadow-card)]">
-            {isLoading || !heroImageUrl ? (
+            {isLoading || slides.length === 0 ? (
               <div className="h-full w-full bg-transparent" aria-hidden />
             ) : (
-              <img
-                src={heroImageUrl}
-                alt="Stack of New York-style chocolate chip cookies"
-                width={1536}
-                height={1920}
-                className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-              />
+              <div className="relative h-full w-full">
+                {slides.map((src, i) => (
+                  <img
+                    key={src}
+                    src={src}
+                    alt={`Hero image ${i + 1}`}
+                    className={cn(
+                      "absolute inset-0 h-full w-full object-cover transition-opacity duration-1000",
+                      i === activeIdx ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                ))}
+
+                {/* Prev / Next buttons — only shown when there are multiple slides */}
+                {slides.length > 1 && (
+                  <>
+                    <button
+                      onClick={prev}
+                      aria-label="Previous image"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={next}
+                      aria-label="Next image"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+
+                    {/* Dot indicators */}
+                    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+                      {slides.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setActiveIdx(i)}
+                          aria-label={`Go to image ${i + 1}`}
+                          className={cn(
+                            "h-1.5 rounded-full transition-all",
+                            i === activeIdx
+                              ? "w-5 bg-white"
+                              : "w-1.5 bg-white/50 hover:bg-white/75",
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
+
           <div className="absolute -bottom-4 -left-4 rounded-2xl border border-border/60 bg-card px-5 py-3 shadow-[var(--shadow-card)]">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fresh today</p>
             <p className="mt-0.5 font-display text-lg">Baked to order</p>
@@ -222,7 +299,6 @@ function OurStory() {
   const { t, locale } = useI18n();
   const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
 
-  // Use settings values; fall back to i18n strings only if settings haven't loaded yet
   const heading =
     (locale === "ar" ? settings?.story_heading_ar : settings?.story_heading_en) ||
     t("story.heading");

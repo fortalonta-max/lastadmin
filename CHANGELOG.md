@@ -1,6 +1,6 @@
-# CHANGELOG — Round 5 (Cumulative, including 5b + 5c)
+# CHANGELOG — Round 5 (Cumulative, including 5b + 5c + 5d)
 
-All changes are **frontend only**. No backend/API/auth logic was modified.
+All changes are **frontend only** unless a DB migration is noted.
 
 ---
 
@@ -9,10 +9,10 @@ All changes are **frontend only**. No backend/API/auth logic was modified.
 Run these once in Supabase SQL Editor before deploying:
 
 ```sql
--- Round 5 (sale_enabled on boxes)
+-- Round 5: sale_enabled on boxes
 ALTER TABLE boxes ADD COLUMN IF NOT EXISTS sale_enabled boolean NOT NULL DEFAULT false;
 
--- Round 5c (Our Story + Announcement Bar on site_settings)
+-- Round 5c: Our Story + Announcement Bar
 ALTER TABLE site_settings
   ADD COLUMN IF NOT EXISTS story_heading_en  text,
   ADD COLUMN IF NOT EXISTS story_heading_ar  text,
@@ -27,54 +27,48 @@ ALTER TABLE site_settings
   ADD COLUMN IF NOT EXISTS announcement_enabled  boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS announcement_text_en  text,
   ADD COLUMN IF NOT EXISTS announcement_text_ar  text;
+
+-- Round 5d: Hero carousel (jsonb array of image URLs)
+ALTER TABLE site_settings
+  ADD COLUMN IF NOT EXISTS hero_images jsonb NOT NULL DEFAULT '[]';
 ```
 
 ---
 
-## What changed in Round 5c
+## What changed in Round 5d
 
-### `src/lib/storefront.ts`
+### Top-of-page bars — split into two distinct bars
 
-- `SiteSettings` type converted from `typeof DEFAULT_SETTINGS` to an explicit interface so `announcement_enabled` is properly typed as `boolean` (not literal `false`).
-- Added 13 new fields to `DEFAULT_SETTINGS` and the `fetchSettings` merge:
-  - **Our Story**: `story_heading_en/ar`, `story_body_en/ar`, `story_pillar1–3_en/ar`
-  - **Announcement Bar**: `announcement_enabled`, `announcement_text_en/ar`
-- `fetchSettings` SELECT string extended to include all new columns.
+| Bar | Colour | Behaviour |
+|---|---|---|
+| **Delivery bar** | Baby pink `#FCE4EC` | Static, always visible, fixed text about free delivery |
+| **Announcement bar** | Baby blue `#E3F2FD` | Scrolling ticker, admin on/off, admin-editable text EN + AR |
 
-### `src/components/site-chrome.tsx`
+Previously there was a single hardcoded announcement bar. It has been replaced by:
 
-- **Announcement bar replaced**: the old hardcoded static bar is now a `<AnnouncementBar />` component that:
-  - Reads `announcement_enabled`, `announcement_text_en/ar` from settings.
-  - Renders nothing when `announcement_enabled` is `false`.
-  - Displays the text as a **smooth CSS `@keyframes` scrolling ticker** (30 s loop, no external dependency).
-  - Localises to Arabic when the user's language is AR.
-  - Uses an inline `<style>` tag for the keyframe — no global CSS changes required.
+1. **`DeliveryBar`** (`site-chrome.tsx`) — permanently visible, baby-pink background `#FCE4EC`, dark-pink text `#AD1457`. Text: "Same-day delivery until 8:00 PM · Free delivery on orders over EGP 750".
 
-### `src/routes/index.tsx`
+2. **`AnnouncementBar`** (`site-chrome.tsx`) — baby-blue background `#E3F2FD`, navy text `#0D47A1`. Scrolls continuously using a CSS `@keyframes announcement-ticker` animation injected via `<style>`. Reads `announcement_enabled`, `announcement_text_en`, `announcement_text_ar` from `site_settings`. Disappears entirely when `announcement_enabled = false`.
 
-- **Our Story section** now reads from settings:
-  - `heading`, `body`, and all three `pillar` strings come from `settings.*` (falls back to i18n strings only until settings load).
-  - No hard-coded story text in JSX anymore.
+### Hero image carousel
 
-### `src/routes/admin.settings.tsx` *(new file)*
+- **`src/routes/index.tsx`** — `Hero` component now accepts a `hero_images` array from settings.
+  - If `hero_images.length > 0`: shows a carousel that auto-advances every 5 s with a 1 s opacity cross-fade transition.
+  - If `hero_images` is empty: falls back to the single `hero_image_url` (no carousel).
+  - Manual prev / next chevron buttons visible when there are multiple slides.
+  - Dot indicators at the bottom of the image; active dot widens to a pill shape.
 
-New admin page at `/admin/settings` that replaces the original and adds:
+- **`src/lib/storefront.ts`** — `SiteSettings` type gains `hero_images: string[]`. `DEFAULT_SETTINGS.hero_images = []`. `fetchSettings` SELECT string extended; merge maps `data.hero_images` through `Array.isArray` guard.
 
-| Section | Fields |
-|---|---|
-| Branding | Store name, tagline EN/AR, logo upload |
-| Hero | Hero image upload, eyebrow EN/AR, headline EN/AR, subtitle EN/AR |
-| **Our Story** *(new)* | Heading EN/AR, body text EN/AR, Pillar 1–3 EN/AR |
-| **Announcement Bar** *(new)* | Enable/disable toggle, text EN/AR with live preview |
-| Contact & Delivery | Phone, WhatsApp, email, address, delivery fee |
-| Advanced | Meta Pixel ID |
-
-Uses the same `ImageUpload`, `Input`, `Textarea`, `Toggle` primitives as the rest of the admin.  
-Saves via `supabase.from("site_settings").upsert({ id: 1, … })` — same pattern as before.
+- **`src/routes/admin.settings.tsx`** — new **Hero Carousel** section with:
+  - Thumbnail grid of current carousel images with numbered badges and hover-to-delete (×) button.
+  - "Add image to carousel" `ImageUpload` that resets after each upload via a `key` bump.
+  - Single fallback `hero_image_url` upload kept in the Hero Section with a note explaining it is used only when the carousel is empty.
+  - Announcement Bar section updated with a colour preview chip and inline live preview of the EN text.
 
 ---
 
-## Summary of All Changes (Rounds 4 → 5 → 5b → 5c)
+## Summary of All Changes (Rounds 4 → 5 → 5b → 5c → 5d)
 
 | # | Feature | Status |
 |---|---|---|
@@ -91,7 +85,9 @@ Saves via `supabase.from("site_settings").upsert({ id: 1, … })` — same patte
 | 11 | Store settings hardcoded as defaults | ✓ |
 | 12 | No flash of default hero/logo on load | ✓ |
 | 13 | Our Story editable from admin settings | ✓ |
-| 14 | Scrolling announcement bar (admin on/off) | ✓ |
+| 14 | Static baby-pink delivery bar (always visible) | ✓ |
+| 15 | Scrolling baby-blue announcement bar (admin on/off) | ✓ |
+| 16 | Hero image carousel (multi-upload, admin-managed) | ✓ |
 
 ---
 
@@ -102,7 +98,7 @@ CHANGELOG.md
 src/lib/storefront.ts
 src/components/site-chrome.tsx
 src/routes/index.tsx
-src/routes/admin.settings.tsx       ← new file; replaces original
+src/routes/admin.settings.tsx
 src/lib/i18n.tsx
 src/routes/__root.tsx
 src/routes/boxes.index.tsx

@@ -7,7 +7,30 @@ import { useCart } from "@/lib/cart";
 import { fetchSettings } from "@/lib/storefront";
 import { cn } from "@/lib/utils";
 
-// ── Announcement bar ───────────────────────────────────────────────────────────
+// ── Bar 1: Fixed baby-pink delivery bar ───────────────────────────────────────
+// Always visible. Text is admin-editable from Settings → Delivery Bar Text.
+
+function DeliveryBar() {
+  const { locale } = useI18n();
+  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+
+  const text =
+    (locale === "ar" ? settings?.delivery_bar_text_ar : settings?.delivery_bar_text_en) ||
+    settings?.delivery_bar_text_en ||
+    "Same-day delivery until 8:00 PM  ·  Free delivery on orders over EGP 750";
+
+  return (
+    <div
+      className="border-b px-4 py-1.5 text-center text-xs font-semibold"
+      style={{ background: "#FCE4EC", borderColor: "#F8BBD9", color: "#AD1457" }}
+    >
+      {text}
+    </div>
+  );
+}
+
+// ── Bar 2: Baby-blue scrolling announcement bar ────────────────────────────────
+// Admin-controlled. Hidden when announcement_enabled = false.
 
 function AnnouncementBar() {
   const { locale } = useI18n();
@@ -22,17 +45,19 @@ function AnnouncementBar() {
 
   if (!text) return null;
 
-  // Repeat the text segment many times; doubled to create a seamless 50 % scroll loop
+  // Repeat segment × 6, then duplicate the whole thing for a seamless 50 % scroll loop
   const segment = Array.from({ length: 6 }, (_, i) => (
     <span key={i} className="inline-flex items-center gap-8 px-6">
       {text}
-      <span className="text-foreground/30">✦</span>
+      <span style={{ color: "#90CAF9" }}>✦</span>
     </span>
   ));
 
   return (
-    <div className="overflow-hidden border-b border-border/40 bg-primary/10 py-1.5 text-xs font-medium text-foreground/80">
-      {/* keyframes injected once — no global CSS required */}
+    <div
+      className="overflow-hidden border-b py-1.5 text-xs font-medium"
+      style={{ background: "#E3F2FD", borderColor: "#BBDEFB", color: "#0D47A1" }}
+    >
       <style>{`@keyframes announcement-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}`}</style>
       <div
         className="inline-flex whitespace-nowrap"
@@ -47,7 +72,6 @@ function AnnouncementBar() {
 
 // ── Logo ───────────────────────────────────────────────────────────────────────
 
-// isLoading: settings query has not resolved yet — render nothing, no fallback
 function BrandLogo({
   logoUrl,
   storeName,
@@ -57,13 +81,9 @@ function BrandLogo({
   storeName?: string | null;
   isLoading?: boolean;
 }) {
-  // While settings are still being fetched, render an invisible placeholder
-  // that preserves the same height so the header layout doesn't shift.
   if (isLoading) {
     return <span className="block h-40 w-40 opacity-0" aria-hidden />;
   }
-
-  // Settings loaded — show whatever logo_url was configured
   if (logoUrl) {
     return (
       <img
@@ -73,8 +93,6 @@ function BrandLogo({
       />
     );
   }
-
-  // Settings loaded but no logo configured — show text name only (no emoji fallback)
   return (
     <span className="font-display text-5xl font-semibold tracking-tight">
       {storeName ?? ""}
@@ -103,12 +121,14 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-xl">
-      {/* Dynamic scrolling announcement bar */}
+      {/* Bar 1 — fixed baby-pink delivery notice */}
+      <DeliveryBar />
+
+      {/* Bar 2 — baby-blue scrolling announcement (admin-controlled) */}
       <AnnouncementBar />
 
       {/* Main nav */}
       <div className="relative mx-auto flex h-48 max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Left: desktop nav links */}
         <nav className="hidden items-center gap-7 md:flex">
           {links.map((l) => (
             <Link
@@ -120,10 +140,8 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        {/* Mobile left spacer so logo stays centered */}
         <div className="w-11 md:hidden" aria-hidden />
 
-        {/* Logo — absolutely centered horizontally */}
         <Link
           to="/"
           className="absolute left-1/2 flex -translate-x-1/2 items-center gap-3"
@@ -135,7 +153,6 @@ export function SiteHeader() {
           />
         </Link>
 
-        {/* Right: action buttons */}
         <div className="flex items-center gap-2">
           <Link
             to="/boxes"
@@ -231,7 +248,6 @@ export function SiteFooter() {
     <footer className="mt-16 border-t border-border/60 bg-card">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="grid gap-10 md:grid-cols-4">
-          {/* Brand column */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2.5">
               <BrandLogo
@@ -253,36 +269,26 @@ export function SiteFooter() {
             )}
           </div>
 
-          {/* Shop column */}
           <div className="text-sm">
             <p className="mb-4 font-semibold text-foreground">{t("nav.boxes")}</p>
             <ul className="space-y-2.5 text-muted-foreground">
-              <li>
-                <Link to="/boxes" className="transition-colors hover:text-foreground">{t("nav.boxes")}</Link>
-              </li>
-              <li>
-                <Link to="/buildbox" className="transition-colors hover:text-foreground">{t("cta.build")}</Link>
-              </li>
-              <li>
-                <Link to="/flavors" className="transition-colors hover:text-foreground">{t("nav.flavors")}</Link>
-              </li>
-              <li>
-                <Link to="/cart" className="transition-colors hover:text-foreground">{t("nav.cart")}</Link>
-              </li>
+              <li><Link to="/boxes" className="transition-colors hover:text-foreground">{t("nav.boxes")}</Link></li>
+              <li><Link to="/buildbox" className="transition-colors hover:text-foreground">{t("cta.build")}</Link></li>
+              <li><Link to="/flavors" className="transition-colors hover:text-foreground">{t("nav.flavors")}</Link></li>
+              <li><Link to="/cart" className="transition-colors hover:text-foreground">{t("nav.cart")}</Link></li>
             </ul>
           </div>
 
-          {/* Contact column */}
           <div className="text-sm">
             <p className="mb-4 font-semibold text-foreground">{t("nav.contact")}</p>
             <ul className="space-y-2.5 text-muted-foreground">
-              {settings?.contact_email ? (
+              {settings?.contact_email && (
                 <li>
                   <a href={`mailto:${settings.contact_email}`} className="transition-colors hover:text-foreground">
                     {settings.contact_email}
                   </a>
                 </li>
-              ) : null}
+              )}
               <li>{settings?.contact_phone}</li>
               {settings?.contact_address && <li>{settings.contact_address}</li>}
             </ul>
