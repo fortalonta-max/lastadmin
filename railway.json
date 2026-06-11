@@ -5,7 +5,7 @@
     "buildCommand": "npm install && npm run build"
   },
   "deploy": {
-    "startCommand": "node dist/server/index.mjs",
+    "startCommand": "node dist/server/index.mjs 2>/dev/null || node .output/server/index.mjs",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }

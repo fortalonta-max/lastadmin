@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "postbuild": "echo '=== Build output ===' && (ls -la dist/server/ 2>/dev/null || echo 'NO dist/server/') && (ls -la .output/server/ 2>/dev/null || echo 'NO .output/server/')",
     "build:dev": "vite build --mode development",
     "start": "node dist/server/index.mjs",
     "lint": "eslint .",
