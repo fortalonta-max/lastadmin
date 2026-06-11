@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2, Minus, Plus, ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { useCart, formatCurrency } from "@/lib/cart";
 import { useI18n } from "@/lib/i18n";
-
-const FREE_SHIPPING_THRESHOLD = 750;
+import { fetchSettings } from "@/lib/storefront";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({ meta: [{ title: "Cart — Leen Bakery" }] }),
@@ -14,8 +14,10 @@ export const Route = createFileRoute("/cart")({
 function CartPage() {
   const { t } = useI18n();
   const { items, remove, updateQty, subtotal } = useCart();
+  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+  const freeShippingThreshold = settings?.free_shipping_threshold ?? 750;
 
-  const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+  const isFreeShipping = subtotal >= freeShippingThreshold;
 
   return (
     <div className="min-h-screen">
@@ -114,7 +116,7 @@ function CartPage() {
                       <span className="font-semibold text-green-600">{t("cart.free_shipping")}</span>
                     ) : (
                       <span className="text-xs text-muted-foreground">
-                        Free over {formatCurrency(FREE_SHIPPING_THRESHOLD)}
+                        Free over {formatCurrency(freeShippingThreshold)}
                       </span>
                     )}
                   </dd>
@@ -124,7 +126,7 @@ function CartPage() {
                 <p className="mt-3 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
                   Add{" "}
                   <span className="font-semibold text-foreground">
-                    {formatCurrency(FREE_SHIPPING_THRESHOLD - subtotal)}
+                    {formatCurrency(freeShippingThreshold - subtotal)}
                   </span>{" "}
                   more for free delivery 🚚
                 </p>

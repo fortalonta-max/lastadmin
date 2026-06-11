@@ -64,6 +64,7 @@ export type SiteSettings = {
   hero_subtitle_ar: string;
   whatsapp_number: string;
   delivery_fee: number;
+  free_shipping_threshold: number;
   contact_email: string;
   contact_phone: string;
   contact_address: string;
@@ -105,6 +106,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   hero_subtitle_ar: "كل كوكيز يُخبز طازجاً يومياً. اختر مفضلاتك وسنوصلها إلى بابك.",
   whatsapp_number: "+201070487228",
   delivery_fee: 90,
+  free_shipping_threshold: 750,
   contact_email: "leendahban@gmail.com",
   contact_phone: "01070487228",
   contact_address: "Egypt – Cairo – New Cairo – Fifth Settlement",
@@ -134,7 +136,7 @@ export async function fetchSettings(): Promise<SiteSettings> {
     .select(
       "store_name, store_tagline_en, store_tagline_ar, logo_url, hero_image_url, hero_images, " +
       "hero_eyebrow_en, hero_eyebrow_ar, hero_title_en, hero_title_ar, hero_subtitle_en, hero_subtitle_ar, " +
-      "whatsapp_number, delivery_fee, contact_email, contact_phone, contact_address, meta_pixel_id, " +
+      "whatsapp_number, delivery_fee, free_shipping_threshold, contact_email, contact_phone, contact_address, meta_pixel_id, " +
       "story_heading_en, story_heading_ar, story_body_en, story_body_ar, " +
       "story_pillar1_en, story_pillar1_ar, story_pillar2_en, story_pillar2_ar, story_pillar3_en, story_pillar3_ar, " +
       "announcement_enabled, announcement_text_en, announcement_text_ar, " +
@@ -160,6 +162,7 @@ export async function fetchSettings(): Promise<SiteSettings> {
     hero_subtitle_ar: data.hero_subtitle_ar ?? DEFAULT_SETTINGS.hero_subtitle_ar,
     whatsapp_number: data.whatsapp_number ?? DEFAULT_SETTINGS.whatsapp_number,
     delivery_fee: data.delivery_fee != null ? Number(data.delivery_fee) : DEFAULT_SETTINGS.delivery_fee,
+    free_shipping_threshold: data.free_shipping_threshold != null ? Number(data.free_shipping_threshold) : DEFAULT_SETTINGS.free_shipping_threshold,
     contact_email: data.contact_email ?? DEFAULT_SETTINGS.contact_email,
     contact_phone: data.contact_phone ?? DEFAULT_SETTINGS.contact_phone,
     contact_address: data.contact_address ?? DEFAULT_SETTINGS.contact_address,

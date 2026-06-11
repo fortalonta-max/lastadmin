@@ -11,8 +11,6 @@ import { fetchSettings } from "@/lib/storefront";
 import { placeOrder } from "@/lib/orders.functions";
 import { trackPixel } from "@/lib/meta-pixel";
 
-const FREE_SHIPPING_THRESHOLD = 750;
-
 export const Route = createFileRoute("/checkout")({
   head: () => ({ meta: [{ title: "Checkout — Leen Bakery" }] }),
   component: CheckoutPage,
@@ -26,6 +24,7 @@ function CheckoutPage() {
 
   const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
   const baseDeliveryFee = Number(settings?.delivery_fee ?? 90);
+  const freeShippingThreshold = settings?.free_shipping_threshold ?? 750;
 
   const [form, setForm] = useState({ name: "", phone: "", address: "", notes: "", coupon: "" });
   const [discount, setDiscount] = useState(0);
@@ -33,7 +32,7 @@ function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const orderSubmittedRef = useRef(false);
 
-  const isFreeShipping = subtotal - discount >= FREE_SHIPPING_THRESHOLD;
+  const isFreeShipping = subtotal - discount >= freeShippingThreshold;
   const deliveryFee = isFreeShipping ? 0 : baseDeliveryFee;
   const total = Math.max(0, subtotal - discount + deliveryFee);
 

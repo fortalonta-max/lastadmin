@@ -195,6 +195,7 @@ function SettingsAdmin() {
           hero_subtitle_ar: form.hero_subtitle_ar,
           whatsapp_number: form.whatsapp_number,
           delivery_fee: form.delivery_fee,
+          free_shipping_threshold: form.free_shipping_threshold,
           contact_email: form.contact_email,
           contact_phone: form.contact_phone,
           contact_address: form.contact_address,
@@ -423,7 +424,10 @@ function SettingsAdmin() {
         </div>
         <Input label="Contact email" value={form.contact_email} onChange={(v) => set("contact_email", v)} type="email" />
         <Input label="Address" value={form.contact_address} onChange={(v) => set("contact_address", v)} />
-        <Input label="Delivery fee (EGP)" value={String(form.delivery_fee)} onChange={(v) => set("delivery_fee", Number(v) || 0)} type="number" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Input label="Delivery fee (EGP)" value={String(form.delivery_fee)} onChange={(v) => set("delivery_fee", Number(v) || 0)} type="number" />
+          <Input label="Free delivery threshold (EGP)" value={String(form.free_shipping_threshold)} onChange={(v) => set("free_shipping_threshold", Number(v) || 0)} type="number" />
+        </div>
       </Section>
 
       {/* ── Advanced ─────────────────────────────────────────────────── */}
