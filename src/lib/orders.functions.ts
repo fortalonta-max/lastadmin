@@ -122,6 +122,7 @@ export const placeOrder = createServerFn({ method: "POST" })
     // Coupon — validated server-side against the DB; the client only sends the code.
     let discount = 0;
     let appliedCode: string | null = null;
+    let appliedCouponId: string | null = null;
     if (data.coupon_code) {
       const { data: coupon } = await supabaseAdmin
         .from("coupons")
@@ -131,12 +132,14 @@ export const placeOrder = createServerFn({ method: "POST" })
         .maybeSingle();
       if (coupon) {
         const notExpired = !coupon.expires_at || new Date(coupon.expires_at) > new Date();
-        if (notExpired && subtotal >= Number(coupon.min_subtotal ?? 0)) {
+        const hasUsesLeft = coupon.usage_limit === null || coupon.usage_limit > 0;
+        if (notExpired && hasUsesLeft && subtotal >= Number(coupon.min_subtotal ?? 0)) {
           discount =
             coupon.type === "percent"
               ? Math.round(subtotal * (Number(coupon.value) / 100) * 100) / 100
               : Math.min(subtotal, Number(coupon.value));
           appliedCode = coupon.code;
+          appliedCouponId = coupon.id;
         }
       }
     }
@@ -177,6 +180,12 @@ export const placeOrder = createServerFn({ method: "POST" })
       })),
     );
     if (itemsErr) throw new Error(itemsErr.message);
+
+    // Atomically decrement usage_limit and deactivate coupon when it hits 0.
+    // The DB function uses FOR UPDATE so concurrent requests cannot double-spend.
+    if (appliedCouponId) {
+      await supabaseAdmin.rpc("use_coupon", { p_coupon_id: appliedCouponId });
+    }
 
     // Fire Conversion API (best-effort, never blocks order)
     try {
