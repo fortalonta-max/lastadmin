@@ -1,3 +1,8 @@
+# Force NIXPACKS to use only the Node.js provider.
+# Without this, NIXPACKS auto-adds Caddy as a reverse proxy which
+# conflicts with the Nitro node-server binding on $PORT.
+providers = ["node"]
+
 [phases.install]
 cmds = ["npm install"]
 
