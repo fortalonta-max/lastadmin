@@ -177,6 +177,9 @@ const en: Dict = {
   "admin.coup.type_percent": "Percent (%)",
   "admin.coup.type_fixed": "Fixed (EGP)",
   "admin.coup.unlimited": "Unlimited",
+  "admin.coup.col_expires": "Expires",
+  "admin.coup.label_expires": "Expiry date (blank = no expiry)",
+  "admin.coup.no_expiry": "No expiry",
 };
 
 const ar: Dict = {
@@ -345,6 +348,9 @@ const ar: Dict = {
   "admin.coup.type_percent": "نسبة مئوية (%)",
   "admin.coup.type_fixed": "مبلغ ثابت (جنيه)",
   "admin.coup.unlimited": "غير محدود",
+  "admin.coup.col_expires": "تاريخ الانتهاء",
+  "admin.coup.label_expires": "تاريخ الانتهاء (اتركه فارغاً لعدم الانتهاء)",
+  "admin.coup.no_expiry": "بلا انتهاء",
 };
 
 const dicts: Record<Locale, Dict> = { en, ar };

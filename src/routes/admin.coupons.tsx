@@ -85,6 +85,7 @@ function CouponsAdmin() {
               <th className="px-4 py-3 text-start">{t("admin.coup.col_value")}</th>
               <th className="px-4 py-3 text-start">{t("admin.coup.col_min")}</th>
               <th className="px-4 py-3 text-start">{t("admin.coup.col_usage_limit")}</th>
+              <th className="px-4 py-3 text-start">{t("admin.coup.col_expires")}</th>
               <th className="px-4 py-3 text-start">{t("admin.coup.col_active")}</th>
               <th className="px-4 py-3" />
             </tr>
@@ -100,6 +101,11 @@ function CouponsAdmin() {
                 <td className="px-4 py-3">{c.min_subtotal} EGP</td>
                 <td className="px-4 py-3">
                   {c.usage_limit != null ? c.usage_limit : t("admin.coup.unlimited")}
+                </td>
+                <td className="px-4 py-3 text-xs">
+                  {c.expires_at
+                    ? new Date(c.expires_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                    : <span className="text-muted-foreground">{t("admin.coup.no_expiry")}</span>}
                 </td>
                 <td className="px-4 py-3">{c.active ? t("admin.yes") : t("admin.no")}</td>
                 <td className="px-4 py-3 text-end">
@@ -178,6 +184,21 @@ function CouponsAdmin() {
                 }
                 placeholder="∞"
               />
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium">{t("admin.coup.label_expires")}</span>
+                <input
+                  type="date"
+                  value={editing.expires_at ? editing.expires_at.slice(0, 10) : ""}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      expires_at: e.target.value ? e.target.value + "T23:59:59Z" : null,
+                    })
+                  }
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+                <p className="mt-0.5 text-xs text-muted-foreground">{t("admin.coup.no_expiry")} = {t("admin.coup.unlimited").toLowerCase()}</p>
+              </label>
               <Toggle
                 label={t("admin.coup.label_active")}
                 checked={editing.active ?? true}

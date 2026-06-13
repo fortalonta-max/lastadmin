@@ -461,7 +461,7 @@ function BoxCard({
                   </p>
                 )}
                 <p className="font-display text-base sm:text-2xl">
-                  <span className="text-xs font-normal text-muted-foreground sm:text-sm">
+                  <span className="hidden sm:inline text-sm font-normal text-muted-foreground">
                     {t("box.starting_from")}{" "}
                   </span>
                   {formatCurrency(startingPrice)}
