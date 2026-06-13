@@ -127,14 +127,14 @@ function BrandLogo({
   isLoading?: boolean;
 }) {
   if (isLoading) {
-    return <span className="block h-40 w-40 opacity-0" aria-hidden />;
+    return <span className="block h-[68px] w-40 opacity-0" aria-hidden />;
   }
   if (logoUrl) {
     return (
       <img
         src={logoUrl}
         alt={storeName ?? "Store logo"}
-        className="h-40 w-auto max-w-[480px] object-contain"
+        className="h-[68px] w-auto max-w-[340px] object-contain"
       />
     );
   }
@@ -169,7 +169,7 @@ export function SiteHeader() {
       <DeliveryBar />
       <AnnouncementBar />
 
-      <div className="relative mx-auto flex h-48 max-w-7xl items-center justify-between px-4 sm:px-6">
+      <div className="relative mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6">
         <nav className="hidden items-center gap-7 md:flex">
           {links.map((l) => (
             <Link
