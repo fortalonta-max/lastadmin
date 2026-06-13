@@ -7,7 +7,8 @@ import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchBoxes,
-  fetchFlavors,
+  fetchByoPriceRangePerBox,
+  fetchDefaultFlavorPriceRange,
   fetchSettings,
   localizedName,
   localizedDesc,
@@ -208,14 +209,11 @@ function Hero() {
 function BestSellers() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
+  const { data: byoPrices = {} } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
+  const { data: defaultRange = { min: 0, max: 0 } } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
 
   const best = boxes.filter((b) => b.is_best_seller);
   if (best.length === 0) return null;
-
-  const flavorPrices = flavors.map((f) => f.price).filter((p) => p > 0);
-  const minFlavorPrice = flavorPrices.length > 0 ? Math.min(...flavorPrices) : 0;
-  const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
@@ -229,8 +227,8 @@ function BestSellers() {
             t={t}
             badge={t("box.best_seller")}
             badgeVariant="pink"
-            minFlavorPrice={minFlavorPrice}
-            maxFlavorPrice={maxFlavorPrice}
+            byoPrices={byoPrices}
+            defaultRange={defaultRange}
           />
         ))}
       </div>
@@ -243,13 +241,10 @@ function BestSellers() {
 function OurProducts() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
+  const { data: byoPrices = {} } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
+  const { data: defaultRange = { min: 0, max: 0 } } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
 
   if (boxes.length === 0) return null;
-
-  const flavorPrices = flavors.map((f) => f.price).filter((p) => p > 0);
-  const minFlavorPrice = flavorPrices.length > 0 ? Math.min(...flavorPrices) : 0;
-  const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
 
   return (
     <section className="bg-card/60 py-12">
@@ -270,8 +265,8 @@ function OurProducts() {
                   : t("box.byo")
               }
               badgeVariant={b.is_best_seller ? "pink" : b.type === "fixed" ? "gold" : "blue"}
-              minFlavorPrice={minFlavorPrice}
-              maxFlavorPrice={maxFlavorPrice}
+              byoPrices={byoPrices}
+              defaultRange={defaultRange}
             />
           ))}
         </div>
@@ -404,18 +399,21 @@ function BoxCard({
   t,
   badge,
   badgeVariant,
-  minFlavorPrice,
-  maxFlavorPrice,
+  byoPrices,
+  defaultRange,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
   badge?: string;
   badgeVariant?: "pink" | "blue" | "gold";
-  minFlavorPrice: number;
-  maxFlavorPrice: number;
+  byoPrices: Record<string, { min: number; max: number }>;
+  defaultRange: { min: number; max: number };
 }) {
   const isByo = b.type === "byo";
+  const priceRange = byoPrices[b.id] ?? defaultRange;
+  const minFlavorPrice = priceRange.min;
+  const maxFlavorPrice = priceRange.max;
   const startingPrice = isByo && minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
   const comparePrice =
     isByo && b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;

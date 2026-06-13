@@ -282,3 +282,62 @@ export function localizedName<T extends Record<string, unknown>>(o: T, locale: L
 export function localizedDesc<T extends Record<string, unknown>>(o: T, locale: Locale) {
   return pickLocalized(o, "description", locale);
 }
+
+/**
+ * Fetch the minimum and maximum flavor price for every BYO box.
+ * Queries flavor_box_prices first (box-specific overrides), then falls back
+ * to the default flavors.price for flavors that have no box-specific override.
+ * Returns a map of  box_id → { min, max }
+ */
+export async function fetchByoPriceRangePerBox(): Promise<
+  Record<string, { min: number; max: number }>
+> {
+  // 1. Box-specific overrides
+  const { data: bfpRows } = await supabase
+    .from("flavor_box_prices")
+    .select("box_id, flavor_id, price");
+
+  // 2. Default flavor prices (fallback)
+  const { data: flavorRows } = await supabase
+    .from("flavors")
+    .select("id, price")
+    .eq("is_available", true);
+
+  const defaultFlavorMin =
+    flavorRows && flavorRows.length > 0
+      ? Math.min(...flavorRows.map((f) => Number(f.price ?? 0)).filter((p) => p > 0))
+      : 0;
+  const defaultFlavorMax =
+    flavorRows && flavorRows.length > 0
+      ? Math.max(...flavorRows.map((f) => Number(f.price ?? 0)).filter((p) => p > 0))
+      : 0;
+
+  // Build per-box min/max from box-specific rows
+  const result: Record<string, { min: number; max: number }> = {};
+  for (const row of bfpRows ?? []) {
+    const p = Number(row.price ?? 0);
+    if (p <= 0) continue;
+    if (!result[row.box_id]) {
+      result[row.box_id] = { min: p, max: p };
+    } else {
+      result[row.box_id].min = Math.min(result[row.box_id].min, p);
+      result[row.box_id].max = Math.max(result[row.box_id].max, p);
+    }
+  }
+
+  // For BYO boxes with no entries in flavor_box_prices, callers fall back to
+  // defaultFlavorMin / defaultFlavorMax (exported below)
+  return result;
+}
+
+export async function fetchDefaultFlavorPriceRange(): Promise<{ min: number; max: number }> {
+  const { data } = await supabase
+    .from("flavors")
+    .select("price")
+    .eq("is_available", true);
+  const prices = (data ?? []).map((f) => Number(f.price ?? 0)).filter((p) => p > 0);
+  return {
+    min: prices.length > 0 ? Math.min(...prices) : 0,
+    max: prices.length > 0 ? Math.max(...prices) : 0,
+  };
+}

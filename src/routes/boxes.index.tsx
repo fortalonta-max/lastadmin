@@ -4,7 +4,14 @@ import { ArrowRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
-import { fetchBoxes, fetchFlavors, localizedName, localizedDesc, type Box } from "@/lib/storefront";
+import {
+  fetchBoxes,
+  fetchByoPriceRangePerBox,
+  fetchDefaultFlavorPriceRange,
+  localizedName,
+  localizedDesc,
+  type Box,
+} from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/boxes/")({
@@ -22,20 +29,20 @@ export const Route = createFileRoute("/boxes/")({
 function BoxesPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
-
-  const flavorPrices = flavors.map((f) => f.price).filter((p) => p > 0);
-  const minFlavorPrice = flavorPrices.length > 0 ? Math.min(...flavorPrices) : 0;
-  const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
+  const { data: byoPrices = {} } = useQuery({
+    queryKey: ["byo-price-range"],
+    queryFn: fetchByoPriceRangePerBox,
+  });
+  const { data: defaultRange = { min: 0, max: 0 } } = useQuery({
+    queryKey: ["default-flavor-range"],
+    queryFn: fetchDefaultFlavorPriceRange,
+  });
 
   return (
     <div className="min-h-screen">
       <SiteHeader />
       <main>
-        <div
-          className="border-b border-border/60 py-12"
-          style={{ background: "var(--gradient-hero)" }}
-        >
+        <div className="border-b border-border/60 py-12" style={{ background: "var(--gradient-hero)" }}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/60">
               {t("section.boxes")}
@@ -66,8 +73,8 @@ function BoxesPage() {
                   box={b}
                   locale={locale}
                   t={t}
-                  minFlavorPrice={minFlavorPrice}
-                  maxFlavorPrice={maxFlavorPrice}
+                  byoPrices={byoPrices}
+                  defaultRange={defaultRange}
                 />
               ))}
             </div>
@@ -83,16 +90,22 @@ function BoxCard({
   box: b,
   locale,
   t,
-  minFlavorPrice,
-  maxFlavorPrice,
+  byoPrices,
+  defaultRange,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
-  minFlavorPrice: number;
-  maxFlavorPrice: number;
+  byoPrices: Record<string, { min: number; max: number }>;
+  defaultRange: { min: number; max: number };
 }) {
   const isByo = b.type === "byo";
+
+  // Per-box price range → fallback to global default flavor range
+  const priceRange = byoPrices[b.id] ?? defaultRange;
+  const minFlavorPrice = priceRange.min;
+  const maxFlavorPrice = priceRange.max;
+
   const startingPrice = isByo && minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
   const comparePrice =
     isByo && b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;
