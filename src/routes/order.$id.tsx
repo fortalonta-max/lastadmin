@@ -125,8 +125,8 @@ function OrderPage() {
     <div className="min-h-screen">
       <SiteHeader />
       <main className="mx-auto max-w-2xl px-4 py-20 text-center sm:px-6">
-        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--pink-soft)]">
-          <CheckCircle2 className="h-9 w-9 text-primary" />
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-green-50">
+          <CheckCircle2 className="h-9 w-9 text-green-500" />
         </div>
         <h1 className="mt-6 font-display text-4xl sm:text-5xl">{t("order.thank_you")}</h1>
         <p className="mt-3 text-muted-foreground">

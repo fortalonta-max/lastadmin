@@ -102,14 +102,12 @@ function FlavorCard({
             : "var(--gradient-pink-blue)",
         }}
       />
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="font-display text-base leading-tight sm:text-lg">
-          {localizedName(f, locale)}
-        </h2>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          {f.is_limited_edition && <Badge variant="gold">{t("box.limited")}</Badge>}
-          {f.is_out_of_stock && <Badge variant="destructive">{t("box.out_of_stock")}</Badge>}
-        </div>
+      <h2 className="font-display text-base leading-tight sm:text-lg">
+        {localizedName(f, locale)}
+      </h2>
+      <div className="mt-1.5 flex flex-wrap gap-1">
+        {f.is_limited_edition && <Badge variant="gold">{t("box.limited")}</Badge>}
+        {f.is_out_of_stock && <Badge variant="destructive">{t("box.out_of_stock")}</Badge>}
       </div>
       {f.description_en && (
         <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground">

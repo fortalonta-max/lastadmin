@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { notifyNewOrder } from "@/lib/telegram";
 
 const FlavorLine = z.object({
   flavor_id: z.string().uuid(),
@@ -185,6 +186,30 @@ export const placeOrder = createServerFn({ method: "POST" })
     // The DB function uses FOR UPDATE so concurrent requests cannot double-spend.
     if (appliedCouponId) {
       await supabaseAdmin.rpc("use_coupon", { p_coupon_id: appliedCouponId });
+    }
+
+    // Fire Telegram notification (best-effort, never blocks the order)
+    try {
+      await notifyNewOrder({
+        order_number: order.order_number,
+        customer_name: data.customer.name,
+        customer_phone: data.customer.phone,
+        customer_address: data.customer.address,
+        notes: data.customer.notes,
+        items: data.items.map((i, idx) => ({
+          box_name: i.box_name,
+          cookie_count: i.cookie_count,
+          quantity: i.quantity,
+          selected_flavors: i.selected_flavors,
+        })),
+        subtotal,
+        discount,
+        delivery_fee: deliveryFee,
+        total,
+        coupon_code: appliedCode,
+      });
+    } catch (e) {
+      console.error("Telegram notify failed:", e);
     }
 
     // Fire Conversion API (best-effort, never blocks order)

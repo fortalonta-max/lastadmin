@@ -96,7 +96,7 @@ const en: Dict = {
   "checkout.summary": "Order summary",
   "checkout.cod": "Cash on Delivery — pay when your cookies arrive.",
 
-  "order.thank_you": "Thank you! Your order is in the oven.",
+  "order.thank_you": "Thank you! We will prepare your order.",
   "order.confirmed": "Your order has been completed successfully. Our support team will contact you shortly to confirm the order.",
   "order.number": "Order #",
   "order.whatsapp": "Send order via WhatsApp to confirm it",
@@ -117,6 +117,7 @@ const en: Dict = {
   "admin.nav.coupons": "Coupons",
   "admin.nav.reviews": "Reviews",
   "admin.nav.faqs": "FAQs",
+  "admin.nav.social": "Social Media",
   "admin.nav.settings": "Settings",
 
   "admin.save": "Save",
@@ -263,7 +264,7 @@ const ar: Dict = {
   "checkout.summary": "ملخص الطلب",
   "checkout.cod": "الدفع عند الاستلام — ادفع عند وصول الكوكيز.",
 
-  "order.thank_you": "شكراً لك! طلبك في الفرن.",
+  "order.thank_you": "شكراً لك، سوف نقوم بتجهيز طلبك",
   "order.confirmed": "تم إتمام طلبك بنجاح. سيتواصل معك فريق الدعم قريباً لتأكيد الطلب.",
   "order.number": "طلب رقم ",
   "order.whatsapp": "أرسل الطلب عبر واتساب لتأكيده",
@@ -284,6 +285,7 @@ const ar: Dict = {
   "admin.nav.coupons": "الكوبونات",
   "admin.nav.reviews": "التقييمات",
   "admin.nav.faqs": "الأسئلة الشائعة",
+  "admin.nav.social": "وسائل التواصل",
   "admin.nav.settings": "الإعدادات",
 
   "admin.save": "حفظ",

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { Input, Textarea, Toggle } from "@/routes/admin.flavors";
@@ -52,6 +52,29 @@ function ProductsAdmin() {
     qc.invalidateQueries({ queryKey: ["admin-products"] });
   }
 
+  async function reorder(id: string, dir: -1 | 1) {
+    // Sort by current sort_order to find adjacent item
+    const sorted = [...products].sort((a, b) => a.sort_order - b.sort_order);
+    const idx = sorted.findIndex((x) => x.id === id);
+    if (idx === -1) return;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= sorted.length) return;
+
+    const current = sorted[idx];
+    const neighbor = sorted[newIdx];
+
+    // Swap sort_orders between the two items
+    const [err1, err2] = await Promise.all([
+      supabase.from("products").update({ sort_order: neighbor.sort_order }).eq("id", current.id).then(r => r.error),
+      supabase.from("products").update({ sort_order: current.sort_order }).eq("id", neighbor.id).then(r => r.error),
+    ]);
+
+    if (err1) { toast.error(err1.message); return; }
+    if (err2) { toast.error(err2.message); return; }
+
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+  }
+
   return (
     <div>
       <header className="mb-6 flex items-center justify-between">
@@ -90,6 +113,22 @@ function ProductsAdmin() {
                   <span className="rounded bg-[var(--pink)] px-1.5">best seller</span>
                 )}
               </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={() => reorder(p.id, -1)}
+                className="grid h-7 w-7 place-items-center rounded hover:bg-muted"
+                title="Move up"
+              >
+                <ArrowUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => reorder(p.id, 1)}
+                className="grid h-7 w-7 place-items-center rounded hover:bg-muted"
+                title="Move down"
+              >
+                <ArrowDown className="h-3.5 w-3.5" />
+              </button>
             </div>
             <div className="flex flex-col gap-1">
               <button

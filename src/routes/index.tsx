@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowRight, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
@@ -110,7 +110,7 @@ function Hero() {
         style={{ background: "var(--gradient-hero)" }}
         aria-hidden
       />
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28 lg:py-32">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-20 lg:py-24">
         {/* Text content */}
         <div className="flex flex-col">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
@@ -136,14 +136,6 @@ function Hero() {
             >
               {t("cta.build")}
             </Link>
-          </div>
-          <div className="mt-8 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex -space-x-0.5">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Star key={i} className="h-4 w-4 fill-[var(--gold)] text-[var(--gold)]" />
-              ))}
-            </div>
-            <span className="font-medium text-foreground/70">4.9 from 800+ reviews</span>
           </div>
         </div>
 
@@ -205,11 +197,6 @@ function Hero() {
               </div>
             )}
           </div>
-
-          <div className="absolute -bottom-4 -left-4 rounded-2xl border border-border/60 bg-card px-5 py-3 shadow-[var(--shadow-card)]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fresh today</p>
-            <p className="mt-0.5 font-display text-lg">Baked to order</p>
-          </div>
         </div>
       </div>
     </section>
@@ -231,7 +218,7 @@ function BestSellers() {
   const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
       <SectionHeader eyebrow="★" title={t("section.best_sellers")} />
       <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
         {best.map((b) => (
@@ -265,7 +252,7 @@ function OurProducts() {
   const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
 
   return (
-    <section className="bg-card/60 py-20">
+    <section className="bg-card/60 py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <SectionHeader eyebrow="★★" title={t("section.products")} />
         <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
@@ -313,7 +300,7 @@ function OurStory() {
   ].filter(Boolean);
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
       <div className="overflow-hidden rounded-3xl border border-border/60 bg-card">
         <div className="grid md:grid-cols-2">
           <div
@@ -359,7 +346,7 @@ function Contact() {
   const { t } = useI18n();
   const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
   return (
-    <section id="contact" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section id="contact" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
       <SectionHeader eyebrow="04" title={t("section.contact")} />
       <div className="grid gap-4 md:grid-cols-3">
         <ContactCard label="Email" value={settings?.contact_email ?? "leendahban@gmail.com"} />
@@ -391,7 +378,7 @@ function SectionHeader({
   cta?: { label: string; to: string };
 }) {
   return (
-    <div className="mb-10 flex items-end justify-between gap-4">
+    <div className="mb-8 flex items-end justify-between gap-4">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
           {eyebrow}
@@ -486,7 +473,10 @@ function BoxCard({
               <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
             )}
           </div>
-          <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">
+          <span
+            className="rounded-full px-2 py-1 text-[10px] font-semibold text-white transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs"
+            style={{ background: "linear-gradient(135deg, #f472b6, #93c5fd)" }}
+          >
             {t("cta.view")} →
           </span>
         </div>

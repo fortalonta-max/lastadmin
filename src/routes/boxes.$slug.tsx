@@ -315,13 +315,13 @@ function BYOPicker({
                 }}
               />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="truncate font-semibold">{localizedName(f, locale)}</p>
+                <p className="truncate font-semibold">{localizedName(f, locale)}</p>
+                <div className="mt-1 flex flex-wrap gap-1">
                   {f.is_limited_edition && <Badge variant="gold">{t("box.limited")}</Badge>}
                   {unavailable && <Badge variant="destructive">{t("box.out_of_stock")}</Badge>}
                 </div>
                 {f.description_en && (
-                  <p className="line-clamp-1 text-xs text-muted-foreground">
+                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                     {localizedDesc(f, locale)}
                   </p>
                 )}

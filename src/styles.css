@@ -75,20 +75,20 @@
   --ink:        oklch(0.22 0.02 285);
 
   /* Semantic */
-  --background: oklch(0.985 0.012 80);     /* cream */
+  --background: oklch(0.985 0.012 80);
   --foreground: oklch(0.22 0.02 285);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.22 0.02 285);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.02 285);
 
-  --primary: oklch(0.78 0.1 5);            /* deeper pink for CTA */
+  --primary: oklch(0.78 0.1 5);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.88 0.06 235);       /* baby blue */
+  --secondary: oklch(0.88 0.06 235);
   --secondary-foreground: oklch(0.22 0.02 285);
   --muted: oklch(0.96 0.012 80);
   --muted-foreground: oklch(0.48 0.02 285);
-  --accent: oklch(0.78 0.12 75);           /* gold */
+  --accent: oklch(0.78 0.12 75);
   --accent-foreground: oklch(0.22 0.02 285);
   --destructive: oklch(0.6 0.22 27);
   --destructive-foreground: oklch(1 0 0);
@@ -132,9 +132,18 @@
   html { -webkit-font-smoothing: antialiased; }
 
   body {
-    background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    /* Baby pink → white → baby blue diagonal background */
+    background-color: var(--color-background);
+    background-image: linear-gradient(
+      160deg,
+      var(--pink-soft) 0%,
+      #ffffff 45%,
+      var(--blue-soft) 100%
+    );
+    background-attachment: fixed;
+    background-size: 100% 100%;
   }
 
   [dir="rtl"] body { font-family: var(--font-arabic); }

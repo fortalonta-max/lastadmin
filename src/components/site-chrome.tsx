@@ -5,10 +5,49 @@ import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
 import { fetchSettings } from "@/lib/storefront";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
+// ── Social links type & fetcher ───────────────────────────────────────────────
+
+type SocialLink = {
+  id: string;
+  name: string;
+  url: string;
+  is_active: boolean;
+  sort_order: number;
+};
+
+async function fetchSocialLinks(): Promise<SocialLink[]> {
+  const { data, error } = await supabase
+    .from("social_links")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) return [];
+  return (data ?? []) as SocialLink[];
+}
+
+// Platform → emoji icon mapping
+const PLATFORM_ICON: Record<string, string> = {
+  youtube: "▶",
+  whatsapp: "💬",
+  instagram: "📸",
+  facebook: "📘",
+  tiktok: "🎵",
+  threads: "🧵",
+  twitter: "🐦",
+  "x (twitter)": "𝕏",
+  telegram: "✈️",
+  linkedin: "💼",
+  snapchat: "👻",
+};
+
+function platformIcon(name: string): string {
+  return PLATFORM_ICON[name.toLowerCase()] ?? "🔗";
+}
+
 // ── Bar 1: Fixed baby-pink delivery bar ───────────────────────────────────────
-// Always visible. Text is admin-editable from Settings → Delivery Bar Text.
 
 function DeliveryBar() {
   const { locale } = useI18n();
@@ -30,7 +69,6 @@ function DeliveryBar() {
 }
 
 // ── Bar 2: Baby-blue scrolling announcement bar ────────────────────────────────
-// Admin-controlled. Hidden when announcement_enabled = false.
 
 function AnnouncementBar() {
   const { locale } = useI18n();
@@ -45,7 +83,8 @@ function AnnouncementBar() {
 
   if (!text) return null;
 
-  // Repeat segment × 6, then duplicate the whole thing for a seamless 50 % scroll loop
+  const isRtl = locale === "ar";
+
   const segment = Array.from({ length: 6 }, (_, i) => (
     <span key={i} className="inline-flex items-center gap-8 px-6">
       {text}
@@ -53,15 +92,21 @@ function AnnouncementBar() {
     </span>
   ));
 
+  const animKeyframes = isRtl
+    ? `@keyframes announcement-ticker-rtl{from{transform:translateX(0)}to{transform:translateX(50%)}}`
+    : `@keyframes announcement-ticker-ltr{from{transform:translateX(0)}to{transform:translateX(-50%)}}`;
+
+  const animName = isRtl ? "announcement-ticker-rtl" : "announcement-ticker-ltr";
+
   return (
     <div
       className="overflow-hidden border-b py-1.5 text-xs font-medium"
       style={{ background: "#E3F2FD", borderColor: "#BBDEFB", color: "#0D47A1" }}
     >
-      <style>{`@keyframes announcement-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}`}</style>
+      <style>{animKeyframes}</style>
       <div
         className="inline-flex whitespace-nowrap"
-        style={{ animation: "announcement-ticker 30s linear infinite" }}
+        style={{ animation: `${animName} 30s linear infinite` }}
         aria-label={text}
       >
         {segment}{segment}
@@ -121,13 +166,9 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-xl">
-      {/* Bar 1 — fixed baby-pink delivery notice */}
       <DeliveryBar />
-
-      {/* Bar 2 — baby-blue scrolling announcement (admin-controlled) */}
       <AnnouncementBar />
 
-      {/* Main nav */}
       <div className="relative mx-auto flex h-48 max-w-7xl items-center justify-between px-4 sm:px-6">
         <nav className="hidden items-center gap-7 md:flex">
           {links.map((l) => (
@@ -241,22 +282,20 @@ export function SiteFooter() {
     queryKey: ["public-settings"],
     queryFn: fetchSettings,
   });
+  const { data: socialLinks = [] } = useQuery({
+    queryKey: ["social-links"],
+    queryFn: fetchSocialLinks,
+  });
 
   const tagline = settings?.store_tagline_en ?? (isLoading ? "" : t("footer.tagline"));
 
   return (
-    <footer className="mt-16 border-t border-border/60 bg-card">
+    <footer className="mt-16 border-t border-border/60 bg-card/80 backdrop-blur-sm">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="grid gap-10 md:grid-cols-4">
+          {/* Brand column */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2.5">
-              <BrandLogo
-                logoUrl={settings?.logo_url}
-                storeName={settings?.store_name}
-                isLoading={isLoading}
-              />
-            </div>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">{tagline}</p>
+            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{tagline}</p>
             {settings?.whatsapp_number && (
               <a
                 href={`https://wa.me/${settings.whatsapp_number.replace(/\D/g, "")}`}
@@ -267,8 +306,33 @@ export function SiteFooter() {
                 <span>💬</span> Chat on WhatsApp
               </a>
             )}
+
+            {/* Social links */}
+            {socialLinks.length > 0 && (
+              <div className="mt-6">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Follow us
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {socialLinks.map((link) => (
+                    <a
+                      key={link.id}
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/30 hover:bg-[var(--pink-soft)]"
+                      title={link.name}
+                    >
+                      <span>{platformIcon(link.name)}</span>
+                      {link.name}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* Nav column */}
           <div className="text-sm">
             <p className="mb-4 font-semibold text-foreground">{t("nav.boxes")}</p>
             <ul className="space-y-2.5 text-muted-foreground">
@@ -279,6 +343,7 @@ export function SiteFooter() {
             </ul>
           </div>
 
+          {/* Contact column */}
           <div className="text-sm">
             <p className="mb-4 font-semibold text-foreground">{t("nav.contact")}</p>
             <ul className="space-y-2.5 text-muted-foreground">

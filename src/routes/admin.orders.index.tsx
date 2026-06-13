@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/cart";
@@ -38,6 +38,7 @@ function OrdersList() {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [editOrder, setEditOrder] = useState<EditState | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   const { data: orders = [] } = useQuery({
     queryKey: ["admin-orders"],
@@ -50,6 +51,19 @@ function OrdersList() {
       return data as OrderRow[];
     },
   });
+
+  async function quickConfirm(id: string) {
+    setConfirming(id);
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "confirmed" })
+      .eq("id", id);
+    setConfirming(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Order confirmed ✓");
+    qc.invalidateQueries({ queryKey: ["admin-orders"] });
+    qc.invalidateQueries({ queryKey: ["admin-overview"] });
+  }
 
   async function saveEdit() {
     if (!editOrder) return;
@@ -115,29 +129,43 @@ function OrdersList() {
                   {new Date(o.created_at).toLocaleString()}
                 </td>
                 <td className="px-4 py-3 text-end">
-                  <button
-                    onClick={() =>
-                      setEditOrder({
-                        id: o.id,
-                        customer_name: o.customer_name,
-                        customer_phone: o.customer_phone,
-                        customer_address: o.customer_address,
-                        notes: o.notes ?? "",
-                        status: o.status,
-                      })
-                    }
-                    className="me-1 inline-grid h-7 w-7 place-items-center rounded hover:bg-muted"
-                    title={t("admin.edit")}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => deleteOrder(o.id)}
-                    className="inline-grid h-7 w-7 place-items-center rounded text-destructive hover:bg-muted"
-                    title={t("admin.delete")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="inline-flex items-center gap-1">
+                    {/* Quick-confirm button — only shown for pending orders */}
+                    {o.status === "pending" && (
+                      <button
+                        onClick={() => quickConfirm(o.id)}
+                        disabled={confirming === o.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-semibold text-green-700 transition-colors hover:bg-green-200 disabled:opacity-50"
+                        title="Mark as confirmed"
+                      >
+                        <CheckCheck className="h-3.5 w-3.5" />
+                        {confirming === o.id ? "…" : "Confirm"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() =>
+                        setEditOrder({
+                          id: o.id,
+                          customer_name: o.customer_name,
+                          customer_phone: o.customer_phone,
+                          customer_address: o.customer_address,
+                          notes: o.notes ?? "",
+                          status: o.status,
+                        })
+                      }
+                      className="inline-grid h-7 w-7 place-items-center rounded hover:bg-muted"
+                      title={t("admin.edit")}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteOrder(o.id)}
+                      className="inline-grid h-7 w-7 place-items-center rounded text-destructive hover:bg-muted"
+                      title={t("admin.delete")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
