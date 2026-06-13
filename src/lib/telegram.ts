@@ -1,34 +1,43 @@
 /**
- * telegram.ts — server-only helper for sending Telegram Bot API messages.
+ * telegram.ts — server-only helper for Telegram Bot API notifications.
  *
- * Required env vars (set these in your .env / hosting dashboard):
- *   TELEGRAM_BOT_TOKEN  — your bot token from @BotFather
- *   TELEGRAM_CHAT_ID    — the chat / group ID that receives notifications
- *                         (send any message to your bot, then call:
- *                          https://api.telegram.org/bot<TOKEN>/getUpdates
- *                          and read result[0].message.chat.id)
+ * Required env vars (add to .env and your hosting dashboard):
+ *   TELEGRAM_BOT_TOKEN  — bot token from @BotFather
+ *   TELEGRAM_CHAT_ID    — numeric ID of the chat / group to receive alerts
+ *
+ * How to find your TELEGRAM_CHAT_ID:
+ *   1. Send any message to @OrderLeenBakery_bot from your Telegram account
+ *   2. Open in browser:
+ *      https://api.telegram.org/bot<TOKEN>/getUpdates
+ *   3. Copy the number at result[0].message.chat.id
  */
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
-const CHAT_ID   = process.env.TELEGRAM_CHAT_ID   ?? "";
-
-/** Send a plain-text or Markdown message to the configured chat. */
+/** Send a plain-text message. No parse_mode = no special-character issues. */
 export async function sendTelegramMessage(text: string): Promise<void> {
-  if (!BOT_TOKEN || !CHAT_ID) return; // silently skip if not configured
+  const token  = process.env.TELEGRAM_BOT_TOKEN ?? "";
+  const chatId = process.env.TELEGRAM_CHAT_ID   ?? "";
 
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: CHAT_ID,
-      text,
-      parse_mode: "Markdown",
-    }),
-  });
+  if (!token || !chatId) {
+    console.warn("[Telegram] TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set — skipping notification");
+    return;
+  }
 
-  if (!res.ok) {
-    console.error("Telegram notify failed:", res.status, await res.text());
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[Telegram] sendMessage failed (${res.status}):`, body);
+    } else {
+      console.log("[Telegram] Notification sent OK");
+    }
+  } catch (err) {
+    console.error("[Telegram] Network error:", err);
   }
 }
 
@@ -51,40 +60,46 @@ export async function notifyNewOrder(order: {
   total: number;
   coupon_code?: string | null;
 }): Promise<void> {
-  const fmt = (n: number) => `EGP ${n.toLocaleString("en-EG", { minimumFractionDigits: 0 })}`;
+  const fmt = (n: number) => `${n.toLocaleString("en-EG")} EGP`;
 
   const itemLines = order.items
     .map((item) => {
       const flavors =
         item.selected_flavors.length > 0
-          ? item.selected_flavors.map((f) => `      • ${f.flavor_name} ×${f.quantity}`).join("\n")
+          ? item.selected_flavors.map((f) => `    - ${f.flavor_name} x${f.quantity}`).join("\n")
           : "";
-      const line = `  📦 *${item.box_name}* (${item.cookie_count} cookies) ×${item.quantity}`;
+      const line = `  [${item.box_name} | ${item.cookie_count} cookies] x${item.quantity}`;
       return flavors ? `${line}\n${flavors}` : line;
     })
     .join("\n");
 
-  const lines = [
-    `🛒 *طلب جديد #${order.order_number}*`,
+  const couponLine =
+    order.discount > 0
+      ? `Coupon (${order.coupon_code ?? ""}): -${fmt(order.discount)}\n`
+      : "";
+
+  const text = [
+    `==============================`,
+    `  NEW ORDER #${order.order_number}`,
+    `==============================`,
+    `Name:    ${order.customer_name}`,
+    `Phone:   ${order.customer_phone}`,
+    `Address: ${order.customer_address}`,
+    order.notes ? `Notes:   ${order.notes}` : null,
     ``,
-    `👤 *${order.customer_name}*`,
-    `📞 ${order.customer_phone}`,
-    `📍 ${order.customer_address}`,
-    order.notes ? `📝 _${order.notes}_` : null,
-    ``,
-    `*الطلبات:*`,
+    `ITEMS:`,
     itemLines,
     ``,
-    order.discount > 0
-      ? `💰 المجموع: ${fmt(order.subtotal)}\n🏷 خصم (${order.coupon_code ?? ""}): − ${fmt(order.discount)}\n🚚 توصيل: ${fmt(order.delivery_fee)}`
-      : `🚚 توصيل: ${fmt(order.delivery_fee)}`,
+    `Subtotal:  ${fmt(order.subtotal)}`,
+    couponLine.trim() ? couponLine.trim() : null,
+    `Delivery:  ${fmt(order.delivery_fee)}`,
+    `TOTAL:     ${fmt(order.total)}`,
     ``,
-    `*الإجمالي: ${fmt(order.total)}* 💵`,
-    ``,
-    `⏰ ${new Date().toLocaleString("ar-EG", { timeZone: "Africa/Cairo" })}`,
+    `Time: ${new Date().toLocaleString("en-EG", { timeZone: "Africa/Cairo" })}`,
+    `==============================`,
   ]
     .filter((l) => l !== null)
     .join("\n");
 
-  await sendTelegramMessage(lines);
+  await sendTelegramMessage(text);
 }
