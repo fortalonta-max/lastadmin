@@ -75,6 +75,12 @@ function BoxDetail() {
     }, 0);
   }, [selection, resolvedFlavorPrices]);
 
+  // Minimum starting price for BYO (cheapest flavor × cookie count), null while loading
+  const minByoPrice = useMemo(() => {
+    const prices = Object.values(resolvedFlavorPrices).filter((p) => p > 0);
+    return prices.length > 0 ? Math.min(...prices) : null;
+  }, [resolvedFlavorPrices]);
+
   useEffect(() => {
     if (box) {
       trackPixel("ViewContent", {
@@ -187,7 +193,13 @@ function BoxDetail() {
           <h1 className="mt-3 font-display text-4xl">{localizedName(box, locale)}</h1>
           <p className="mt-2 text-muted-foreground">{localizedDesc(box, locale)}</p>
           <p className="mt-4 font-display text-3xl">
-            {isFixed ? formatCurrency(box.price) : (totalSelected > 0 ? formatCurrency(byoPrice) : "From " + formatCurrency(0))}
+            {isFixed
+              ? formatCurrency(box.price)
+              : totalSelected > 0
+              ? formatCurrency(byoPrice)
+              : minByoPrice !== null
+              ? `From ${formatCurrency(minByoPrice * cookieCount)}`
+              : null}
           </p>
         </div>
 

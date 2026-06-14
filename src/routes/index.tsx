@@ -467,9 +467,9 @@ function BoxCard({
                   {formatCurrency(startingPrice)}
                 </p>
               </>
-            ) : (
+            ) : !isByo ? (
               <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
-            )}
+            ) : null}
           </div>
           <span
             className="rounded-full px-2 py-1 text-[10px] font-semibold text-white transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs"
