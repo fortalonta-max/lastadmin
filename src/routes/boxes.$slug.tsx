@@ -38,7 +38,7 @@ function BoxDetail() {
     queryKey: ["box", slug],
     queryFn: () => fetchBoxBySlug(slug),
   });
-  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
+  const { data: flavors = [], isLoading: isFlavorsLoading } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
 
   // Box-specific flavor prices (only fetched for BYO boxes)
   const { data: boxFlavorPrices = {} } = useQuery({
@@ -199,6 +199,8 @@ function BoxDetail() {
               ? formatCurrency(byoPrice)
               : minByoPrice !== null
               ? `From ${formatCurrency(minByoPrice * cookieCount)}`
+              : isFlavorsLoading
+              ? <span className="inline-block h-5 w-24 animate-pulse rounded bg-muted align-middle" />
               : null}
           </p>
         </div>

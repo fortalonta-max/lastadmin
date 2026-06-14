@@ -22,7 +22,7 @@ export const Route = createFileRoute("/buildbox")({
 function BuildBoxPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: flavors = [] } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
+  const { data: flavors = [], isLoading: isFlavorsLoading } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
 
   const boxes = allBoxes.filter((b) => b.type === "byo");
 
@@ -68,6 +68,7 @@ function BuildBoxPage() {
                   t={t}
                   minFlavorPrice={minFlavorPrice}
                   maxFlavorPrice={maxFlavorPrice}
+                  flavorsLoading={isFlavorsLoading}
                 />
               ))}
             </div>
@@ -85,12 +86,14 @@ function BoxCard({
   t,
   minFlavorPrice,
   maxFlavorPrice,
+  flavorsLoading,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
   minFlavorPrice: number;
   maxFlavorPrice: number;
+  flavorsLoading?: boolean;
 }) {
   const startingPrice = minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
   const comparePrice =
@@ -144,6 +147,8 @@ function BoxCard({
                   {formatCurrency(startingPrice)}
                 </p>
               </>
+            ) : flavorsLoading ? (
+              <div className="h-5 w-20 animate-pulse rounded bg-muted" />
             ) : null}
           </div>
           <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">

@@ -209,8 +209,9 @@ function Hero() {
 function BestSellers() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: byoPrices = {} } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
-  const { data: defaultRange = { min: 0, max: 0 } } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
+  const { data: byoPrices = {}, isLoading: isPriceLoading } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
+  const { data: defaultRange = { min: 0, max: 0 }, isLoading: isRangeLoading } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
+  const pricesLoading = isPriceLoading || isRangeLoading;
 
   const best = boxes.filter((b) => b.is_best_seller);
   if (best.length === 0) return null;
@@ -229,6 +230,7 @@ function BestSellers() {
             badgeVariant="pink"
             byoPrices={byoPrices}
             defaultRange={defaultRange}
+            pricesLoading={pricesLoading}
           />
         ))}
       </div>
@@ -241,8 +243,9 @@ function BestSellers() {
 function OurProducts() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: byoPrices = {} } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
-  const { data: defaultRange = { min: 0, max: 0 } } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
+  const { data: byoPrices = {}, isLoading: isPriceLoading } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
+  const { data: defaultRange = { min: 0, max: 0 }, isLoading: isRangeLoading } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
+  const pricesLoading = isPriceLoading || isRangeLoading;
 
   if (boxes.length === 0) return null;
 
@@ -267,6 +270,7 @@ function OurProducts() {
               badgeVariant={b.is_best_seller ? "pink" : b.type === "fixed" ? "gold" : "blue"}
               byoPrices={byoPrices}
               defaultRange={defaultRange}
+              pricesLoading={pricesLoading}
             />
           ))}
         </div>
@@ -401,6 +405,7 @@ function BoxCard({
   badgeVariant,
   byoPrices,
   defaultRange,
+  pricesLoading,
 }: {
   box: Box;
   locale: "en" | "ar";
@@ -409,6 +414,7 @@ function BoxCard({
   badgeVariant?: "pink" | "blue" | "gold";
   byoPrices: Record<string, { min: number; max: number }>;
   defaultRange: { min: number; max: number };
+  pricesLoading?: boolean;
 }) {
   const isByo = b.type === "byo";
   const priceRange = byoPrices[b.id] ?? defaultRange;
@@ -469,6 +475,8 @@ function BoxCard({
               </>
             ) : !isByo ? (
               <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
+            ) : pricesLoading ? (
+              <div className="h-5 w-20 animate-pulse rounded bg-muted" />
             ) : null}
           </div>
           <span

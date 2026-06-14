@@ -29,14 +29,15 @@ export const Route = createFileRoute("/boxes/")({
 function BoxesPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: byoPrices = {} } = useQuery({
+  const { data: byoPrices = {}, isLoading: isPriceLoading } = useQuery({
     queryKey: ["byo-price-range"],
     queryFn: fetchByoPriceRangePerBox,
   });
-  const { data: defaultRange = { min: 0, max: 0 } } = useQuery({
+  const { data: defaultRange = { min: 0, max: 0 }, isLoading: isRangeLoading } = useQuery({
     queryKey: ["default-flavor-range"],
     queryFn: fetchDefaultFlavorPriceRange,
   });
+  const pricesLoading = isPriceLoading || isRangeLoading;
 
   return (
     <div className="min-h-screen">
@@ -75,6 +76,7 @@ function BoxesPage() {
                   t={t}
                   byoPrices={byoPrices}
                   defaultRange={defaultRange}
+                  pricesLoading={pricesLoading}
                 />
               ))}
             </div>
@@ -92,12 +94,14 @@ function BoxCard({
   t,
   byoPrices,
   defaultRange,
+  pricesLoading,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
   byoPrices: Record<string, { min: number; max: number }>;
   defaultRange: { min: number; max: number };
+  pricesLoading?: boolean;
 }) {
   const isByo = b.type === "byo";
 
@@ -162,6 +166,8 @@ function BoxCard({
               </>
             ) : !isByo ? (
               <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
+            ) : pricesLoading ? (
+              <div className="h-5 w-20 animate-pulse rounded bg-muted" />
             ) : null}
           </div>
           <span className="rounded-full bg-[var(--pink)] px-2 py-1 text-[10px] font-semibold text-ink transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">
