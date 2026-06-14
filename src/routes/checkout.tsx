@@ -56,15 +56,21 @@ function toISODate(d: Date): string {
  * Returns the available slots for a given date.
  * For today: only slots at least MIN_ADVANCE_HOURS ahead of now.
  * For future dates: all slots.
+ *
+ * Uses year/month/day component comparison (not string comparison) to avoid
+ * timezone offset edge cases on mobile browsers (especially iOS Safari).
  */
 function availableSlotsForDate(date: Date): string[] {
   const now = new Date();
-  const todayStr = toISODate(now);
-  const selectedStr = toISODate(date);
 
-  if (selectedStr !== todayStr) return ALL_SLOTS;
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
 
-  // Same-day: slot start must be >= now + 3h
+  if (!isToday) return [...ALL_SLOTS];
+
+  // Same-day: slot start must be >= now + MIN_ADVANCE_HOURS
   const cutoff = new Date(now.getTime() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
   const cutoffMinutes = cutoff.getHours() * 60 + cutoff.getMinutes();
 
@@ -103,9 +109,12 @@ function CheckoutPage() {
   const tomorrowMidnight = new Date(todayMidnight);
   tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
 
-  // Resolve the actual Date from the chosen option
+  // Resolve the actual Date from the chosen option.
+  // For "today" we pass new Date() (actual current time) — NOT todayMidnight — so that
+  // availableSlotsForDate's isToday check reliably matches the current moment on all
+  // mobile browsers. toISODate strips the time part for DB queries anyway.
   const selectedDate: Date | undefined = (() => {
-    if (dateOption === "today") return todayMidnight;
+    if (dateOption === "today") return new Date();
     if (dateOption === "tomorrow") return tomorrowMidnight;
     if (dateOption === "other") return customDate;
     return undefined;
