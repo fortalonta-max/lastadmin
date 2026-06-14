@@ -1,50 +1,47 @@
-# Changelog — BYO Box Starting Price Fix
+# Changelog — Box Card Full Image & Full Content Display
 
 ## Modified Files
 
 ---
 
-### 1. `src/routes/buildbox.tsx`
+### 1. `src/routes/boxes.index.tsx`
 
 **What changed:**
-- Imported `fetchByoPriceRangePerBox` from `@/lib/storefront`.
-- Added a `useQuery` call for `["byo-price-ranges"]` that fetches the lowest (and highest) flavor price per box from the `flavor_box_prices` table.
-- In the render loop, computed `startingPrice = lowestFlavorPrice × box.cookie_count` for each BYO box.
-- Passed `startingPrice` as a new prop to `BoxCard` and replaced the previously displayed `b.price` with the computed `startingPrice`.
-- `BoxCard` now displays "Starting from [startingPrice]" using the live computed value. If no flavor prices exist yet for a box, the price section is hidden (same as before when `price` was 0).
 
-**Reason:**
-The card was displaying `b.price` — a static field stored on the box record — instead of the dynamically computed minimum cost. The correct starting price must reflect what a customer would actually pay: the cheapest available flavor times the number of cookies in the box.
+**Image display:**
+- Removed `aspect-[3/2] sm:aspect-[4/3]` fixed ratio container and `background: url(...) center/cover` inline style, which were cropping the image.
+- Replaced with `<img className="w-full h-auto block">` inside a plain `overflow-hidden` wrapper — image renders at its exact uploaded dimensions with zero cropping.
+- Badge overlays (Best Seller, BYO/Fixed) remain positioned absolutely over the image.
+- Fallback gradient (no image) keeps `aspect-[4/3]` only when there is no image URL.
 
----
+**Content truncation:**
+- Description: removed `hidden` (was hidden on mobile) and `line-clamp-2` (was capped at 2 lines). Full description is now always visible on all screen sizes.
+- "Starting from" label: removed `hidden sm:inline` — now always visible as a `block` line above the price, not an inline prefix that disappeared on mobile.
+- CTA button: removed tiny mobile-only padding; now consistently sized across breakpoints with `px-3 py-1.5 text-xs`.
 
-### 2. `src/routes/boxes.index.tsx`
-
-**What changed:**
-- Imported `fetchByoPriceRangePerBox` from `@/lib/storefront`.
-- Added a `useQuery` call for `["byo-price-ranges"]` (same cache key as `buildbox.tsx`, so a single network request is shared between both pages).
-- In the render loop, computed `startingPrice = lowestFlavorPrice × box.cookie_count` for BYO boxes. Fixed boxes are unaffected and continue to show `b.price`.
-- Passed `startingPrice` as a new prop to `BoxCard`. Inside `BoxCard`, introduced `displayPrice`: for BYO boxes it uses `startingPrice`; for fixed boxes it uses `b.price`.
-- The "Starting from" label is shown on BYO cards (unchanged), now backed by the correct computed price.
-
-**Reason:**
-The "All Boxes" listing page showed the same static `b.price` for BYO cards. Consistent with `buildbox.tsx`, it now shows the real computed starting price so customers see accurate pricing everywhere.
+**Grid layout:**
+- Changed from `grid-cols-2` (two columns even on mobile) to `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` — single column on mobile gives cards enough width to show the full image and all text without cramping.
+- Added `items-start` so cards in the same row don't stretch to match the tallest card.
 
 ---
 
-## Formula applied
+### 2. `src/routes/buildbox.tsx`
 
-```
-startingPrice = lowestFlavorPrice × box.cookie_count
-```
+**What changed:** Identical set of fixes as `boxes.index.tsx` — this page shows the same style of card for BYO boxes only.
 
-- `lowestFlavorPrice` — the minimum value from `flavor_box_prices` rows matching the box, returned by the existing `fetchByoPriceRangePerBox()` helper in `storefront.ts`.
-- `box.cookie_count` — the number of cookies the box holds, already on the `Box` record.
-
-`storefront.ts` was **not modified** — `fetchByoPriceRangePerBox()` already existed and returns exactly the data needed.
+- **Image:** `aspect-[3/2] sm:aspect-[4/3]` + `background-size: cover` → `<img w-full h-auto block>`.
+- **Description:** Removed `hidden line-clamp-2` — full description always visible.
+- **"Starting from" label:** Now a `block` line above the price, always shown.
+- **Grid:** `grid-cols-2` → `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-start`.
 
 ---
 
-## Scope
+## Summary of all changes
 
-Only BYO (`type === "byo"`) product cards are affected. Fixed-price boxes continue to display their stored `b.price` unchanged.
+| Issue | Before | After |
+|---|---|---|
+| Image cropping | Fixed `aspect-[3/2]` + `background-size: cover` | `<img w-full h-auto block>` — natural dimensions |
+| Description on mobile | `hidden` (invisible) | Always visible |
+| Description length | `line-clamp-2` (2-line cap) | Full text, no cap |
+| "Starting from" on mobile | `hidden sm:inline` (invisible) | Always visible (`block`) |
+| Mobile grid | 2 columns (cards too narrow) | 1 column (full width) |

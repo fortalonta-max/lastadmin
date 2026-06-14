@@ -29,7 +29,6 @@ function BoxesPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
 
-  // Fetch the lowest flavor price available per BYO box from flavor_box_prices
   const { data: priceRanges = {} } = useQuery({
     queryKey: ["byo-price-ranges"],
     queryFn: fetchByoPriceRangePerBox,
@@ -63,9 +62,9 @@ function BoxesPage() {
           ) : allBoxes.length === 0 ? (
             <div className="py-20 text-center text-sm text-muted-foreground">No boxes available yet.</div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+            /* Single column on mobile so each card has full width for image + all text */
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 items-start">
               {allBoxes.map((b) => {
-                // For BYO boxes: starting price = lowest flavor price × number of cookies in the box
                 const lowestFlavorPrice = b.type === "byo" ? (priceRanges[b.id]?.min ?? 0) : 0;
                 const startingPrice = lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0;
                 return (
@@ -99,8 +98,6 @@ function BoxCard({
   startingPrice: number;
 }) {
   const isByo = b.type === "byo";
-
-  // For BYO boxes use the computed starting price; for fixed boxes use the stored price
   const displayPrice = isByo ? startingPrice : b.price;
 
   return (
@@ -109,48 +106,58 @@ function BoxCard({
       params={{ slug: b.slug }}
       className="group overflow-hidden rounded-2xl border border-border/60 bg-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[var(--shadow-card)]"
     >
-      <div
-        className="relative aspect-[3/2] overflow-hidden sm:aspect-[4/3]"
-        style={{
-          background: b.image_url ? `url(${b.image_url}) center/cover` : "var(--gradient-hero)",
-        }}
-      >
+      {/* Image: no fixed aspect ratio — renders at exact uploaded dimensions, no cropping */}
+      <div className="relative overflow-hidden">
+        {b.image_url ? (
+          <img
+            src={b.image_url}
+            alt={localizedName(b, locale)}
+            className="w-full h-auto block"
+          />
+        ) : (
+          <div
+            className="aspect-[4/3] w-full"
+            style={{ background: "var(--gradient-hero)" }}
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         {b.is_best_seller && (
-          <span className="absolute left-2 top-2 sm:left-4 sm:top-4">
+          <span className="absolute left-3 top-3">
             <Badge variant="pink">{t("box.best_seller")}</Badge>
           </span>
         )}
-        <span className="absolute right-2 top-2 sm:right-4 sm:top-4">
+        <span className="absolute right-3 top-3">
           <Badge variant={isByo ? "blue" : "gold"}>
             {isByo ? t("box.byo") : t("box.fixed")}
           </Badge>
         </span>
       </div>
-      <div className="p-3 sm:p-5">
-        <h2 className="font-display text-base sm:text-2xl">{localizedName(b, locale)}</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+
+      {/* Card body: all details always visible, nothing hidden or truncated */}
+      <div className="p-4 sm:p-5">
+        <h2 className="font-display text-xl sm:text-2xl">{localizedName(b, locale)}</h2>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
           {b.cookie_count} {t("box.cookies")}
         </p>
         {b.description_en && (
-          <p className="mt-1 hidden line-clamp-2 text-xs text-muted-foreground sm:mt-2 sm:block sm:text-sm">
+          <p className="mt-2 text-sm text-muted-foreground">
             {localizedDesc(b, locale)}
           </p>
         )}
-        <div className="mt-2 flex items-center justify-between sm:mt-4">
+        <div className="mt-4 flex items-center justify-between gap-3">
           <div>
-            {displayPrice > 0 ? (
-              <p className="font-display text-base sm:text-2xl">
+            {displayPrice > 0 && (
+              <p className="font-display text-xl sm:text-2xl">
                 {isByo && (
-                  <span className="hidden sm:inline text-sm font-normal text-muted-foreground">
-                    {t("box.starting_from")}{" "}
+                  <span className="block text-xs font-normal text-muted-foreground sm:text-sm">
+                    {t("box.starting_from")}
                   </span>
                 )}
                 {formatCurrency(displayPrice)}
               </p>
-            ) : null}
+            )}
           </div>
-          <span className="rounded-full bg-[var(--pink)] px-2 py-1 text-[10px] font-semibold text-ink transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">
+          <span className="shrink-0 rounded-full bg-[var(--pink)] px-3 py-1.5 text-xs font-semibold text-ink transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2">
             {t("cta.view")} →
           </span>
         </div>
