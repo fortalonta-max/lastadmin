@@ -8,7 +8,6 @@ import {
   fetchBoxes,
   fetchByoPriceRangePerBox,
   localizedName,
-  localizedDesc,
   type Box,
 } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
@@ -65,8 +64,7 @@ function BuildBoxPage() {
           ) : boxes.length === 0 ? (
             <div className="py-20 text-center text-sm text-muted-foreground">No build-your-own boxes available yet.</div>
           ) : (
-            /* Single column on mobile so each card has full width for image + all text */
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 items-start">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {boxes.map((b) => {
                 const lowestFlavorPrice = priceRanges[b.id]?.min ?? 0;
                 const startingPrice = lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0;
@@ -104,56 +102,52 @@ function BoxCard({
     <Link
       to="/boxes/$slug"
       params={{ slug: b.slug }}
-      className="group overflow-hidden rounded-2xl border border-border/60 bg-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[var(--shadow-card)]"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[var(--shadow-card)]"
     >
-      {/* Image: no fixed aspect ratio — renders at exact uploaded dimensions, no cropping */}
-      <div className="relative overflow-hidden">
+      {/* Fixed-ratio image area with object-contain: uniform card size, zero cropping */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted/40">
         {b.image_url ? (
           <img
             src={b.image_url}
             alt={localizedName(b, locale)}
-            className="w-full h-auto block"
+            className="h-full w-full object-contain"
           />
         ) : (
-          <div
-            className="aspect-[4/3] w-full"
-            style={{ background: "var(--gradient-pink-blue)" }}
-          />
+          <div className="h-full w-full" style={{ background: "var(--gradient-pink-blue)" }} />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         {b.is_best_seller && (
-          <span className="absolute left-3 top-3">
+          <span className="absolute left-2 top-2 sm:left-3 sm:top-3">
             <Badge variant="pink">{t("box.best_seller")}</Badge>
           </span>
         )}
-        <span className="absolute right-3 top-3">
+        <span className="absolute right-2 top-2 sm:right-3 sm:top-3">
           <Badge variant="blue">{t("box.byo")}</Badge>
         </span>
       </div>
 
-      {/* Card body: all details always visible, nothing hidden or truncated */}
-      <div className="p-4 sm:p-5">
-        <h2 className="font-display text-xl sm:text-2xl">{localizedName(b, locale)}</h2>
-        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+      {/* Card body */}
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
+        <h2 className="font-display text-sm leading-snug sm:text-xl">
+          {localizedName(b, locale)}
+        </h2>
+        <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-sm">
           {b.cookie_count} {t("box.cookies")}
         </p>
-        {b.description_en && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {localizedDesc(b, locale)}
-          </p>
-        )}
-        <div className="mt-4 flex items-center justify-between gap-3">
+
+        {/* Price — always visible on all screen sizes */}
+        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
           <div>
             {startingPrice > 0 && (
-              <p className="font-display text-xl sm:text-2xl">
-                <span className="block text-xs font-normal text-muted-foreground sm:text-sm">
+              <p className="font-display text-sm sm:text-xl">
+                <span className="block text-[10px] font-normal text-muted-foreground sm:text-xs">
                   {t("box.starting_from")}
                 </span>
                 {formatCurrency(startingPrice)}
               </p>
             )}
           </div>
-          <span className="shrink-0 rounded-full bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2">
+          <span className="shrink-0 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-3 sm:py-1.5 sm:text-xs">
             {t("cta.build")} →
           </span>
         </div>

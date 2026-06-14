@@ -8,8 +8,8 @@ import { useI18n } from "@/lib/i18n";
 import {
   fetchBoxes,
   fetchSettings,
+  fetchByoPriceRangePerBox,
   localizedName,
-  localizedDesc,
   type Box,
 } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
@@ -69,8 +69,6 @@ function Hero() {
     (locale === "ar" ? settings?.hero_subtitle_ar : settings?.hero_subtitle_en) ||
     t("hero.subtitle");
 
-  // Build the carousel slide list:
-  // prefer hero_images array; fall back to the single hero_image_url
   const slides: string[] = (() => {
     if (!settings) return [];
     if (settings.hero_images.length > 0) return settings.hero_images;
@@ -80,7 +78,6 @@ function Hero() {
 
   const [activeIdx, setActiveIdx] = useState(0);
 
-  // Auto-advance every 5 s when there are multiple slides
   useEffect(() => {
     if (slides.length <= 1) return;
     const id = setInterval(
@@ -90,7 +87,6 @@ function Hero() {
     return () => clearInterval(id);
   }, [slides.length]);
 
-  // Keep index in bounds if slides list shrinks
   useEffect(() => {
     if (slides.length > 0 && activeIdx >= slides.length) setActiveIdx(0);
   }, [slides.length, activeIdx]);
@@ -110,7 +106,6 @@ function Hero() {
         aria-hidden
       />
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-20 lg:py-24">
-        {/* Text content */}
         <div className="flex flex-col">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
             {eyebrow}
@@ -138,7 +133,6 @@ function Hero() {
           </div>
         </div>
 
-        {/* Hero image carousel */}
         <div className="relative">
           <div className="aspect-[4/5] overflow-hidden rounded-3xl shadow-[var(--shadow-card)]">
             {isLoading || slides.length === 0 ? (
@@ -156,8 +150,6 @@ function Hero() {
                     )}
                   />
                 ))}
-
-                {/* Prev / Next buttons — only shown when there are multiple slides */}
                 {slides.length > 1 && (
                   <>
                     <button
@@ -174,8 +166,6 @@ function Hero() {
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
-
-                    {/* Dot indicators */}
                     <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
                       {slides.map((_, i) => (
                         <button
@@ -207,6 +197,10 @@ function Hero() {
 function BestSellers() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
+  const { data: priceRanges = {} } = useQuery({
+    queryKey: ["byo-price-ranges"],
+    queryFn: fetchByoPriceRangePerBox,
+  });
 
   const best = boxes.filter((b) => b.is_best_seller);
   if (best.length === 0) return null;
@@ -223,6 +217,7 @@ function BestSellers() {
             t={t}
             badge={t("box.best_seller")}
             badgeVariant="pink"
+            priceRanges={priceRanges}
           />
         ))}
       </div>
@@ -235,6 +230,10 @@ function BestSellers() {
 function OurProducts() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
+  const { data: priceRanges = {} } = useQuery({
+    queryKey: ["byo-price-ranges"],
+    queryFn: fetchByoPriceRangePerBox,
+  });
 
   if (boxes.length === 0) return null;
 
@@ -257,6 +256,7 @@ function OurProducts() {
                   : t("box.byo")
               }
               badgeVariant={b.is_best_seller ? "pink" : b.type === "fixed" ? "gold" : "blue"}
+              priceRanges={priceRanges}
             />
           ))}
         </div>
@@ -389,14 +389,22 @@ function BoxCard({
   t,
   badge,
   badgeVariant,
+  priceRanges = {},
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
   badge?: string;
   badgeVariant?: "pink" | "blue" | "gold";
+  priceRanges?: Record<string, { min: number; max: number }>;
 }) {
   const isByo = b.type === "byo";
+
+  // For BYO boxes: compute starting price from lowest flavor price × cookie count
+  const lowestFlavorPrice = isByo ? (priceRanges[b.id]?.min ?? 0) : 0;
+  const displayPrice = isByo
+    ? (lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0)
+    : b.price;
 
   return (
     <Link
@@ -404,48 +412,50 @@ function BoxCard({
       params={{ slug: b.slug }}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[var(--shadow-card)]"
     >
-      <div
-        className="relative aspect-[3/2] w-full overflow-hidden sm:aspect-[4/3]"
-        style={{
-          background: b.image_url
-            ? `url(${b.image_url}) center/cover`
-            : "var(--gradient-hero)",
-        }}
-      >
+      {/* Fixed-ratio image area with object-contain: uniform card size, zero cropping */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted/40">
+        {b.image_url ? (
+          <img
+            src={b.image_url}
+            alt={localizedName(b, locale)}
+            className="h-full w-full object-contain"
+          />
+        ) : (
+          <div className="h-full w-full" style={{ background: "var(--gradient-hero)" }} />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
         {badge && (
-          <span className="absolute left-2 top-2 sm:left-4 sm:top-4">
+          <span className="absolute left-2 top-2 sm:left-3 sm:top-3">
             <Badge variant={badgeVariant ?? "pink"}>{badge}</Badge>
           </span>
         )}
-        <span className="absolute right-2 top-2 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold backdrop-blur sm:right-4 sm:top-4 sm:px-3 sm:py-1 sm:text-xs">
+        <span className="absolute right-2 top-2 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold backdrop-blur sm:right-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-xs">
           {b.cookie_count} {t("box.cookies")}
         </span>
       </div>
-      <div className="flex flex-1 flex-col p-3 sm:p-5">
-        <h3 className="font-display text-base leading-tight sm:text-2xl">
+
+      {/* Card body */}
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
+        <h3 className="font-display text-sm leading-tight sm:text-xl">
           {localizedName(b, locale)}
         </h3>
-        {b.description_en && (
-          <p className="mt-1 hidden line-clamp-2 text-xs text-muted-foreground sm:mt-2 sm:block sm:text-sm">
-            {localizedDesc(b, locale)}
-          </p>
-        )}
-        <div className="mt-auto flex items-end justify-between pt-2 sm:pt-4">
+
+        {/* Price — always visible on all screen sizes, no hidden classes */}
+        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
           <div>
-            {b.price > 0 ? (
-              <p className="font-display text-base sm:text-2xl">
+            {displayPrice > 0 && (
+              <p className="font-display text-sm sm:text-xl">
                 {isByo && (
-                  <span className="hidden sm:inline text-sm font-normal text-muted-foreground">
-                    {t("box.starting_from")}{" "}
+                  <span className="block text-[10px] font-normal text-muted-foreground sm:text-xs">
+                    {t("box.starting_from")}
                   </span>
                 )}
-                {formatCurrency(b.price)}
+                {formatCurrency(displayPrice)}
               </p>
-            ) : null}
+            )}
           </div>
           <span
-            className="rounded-full px-2 py-1 text-[10px] font-semibold text-white transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs"
+            className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white transition-transform group-hover:translate-x-0.5 sm:px-3 sm:py-1.5 sm:text-xs"
             style={{ background: "linear-gradient(135deg, #f472b6, #93c5fd)" }}
           >
             {t("cta.view")} →
