@@ -38,25 +38,32 @@ function BoxDetail() {
     queryKey: ["box", slug],
     queryFn: () => fetchBoxBySlug(slug),
   });
-  const { data: flavors = [], isLoading: isFlavorsLoading } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
+  const { data: flavors = [], isLoading: isFlavorsLoading } = useQuery({
+    queryKey: ["flavors"],
+    queryFn: fetchFlavors,
+  });
 
-  // Box-specific flavor prices (only fetched for BYO boxes)
+  // Box-specific flavor prices from flavor_box_prices table
   const { data: boxFlavorPrices = {} } = useQuery({
     queryKey: ["flavor-box-prices", box?.id],
     queryFn: () => fetchFlavorPricesForBox(box!.id),
     enabled: !!box?.id,
   });
 
-  // Resolved price per flavor: exclusively from flavor_box_prices (single source of truth)
+  // Resolved price per flavor:
+  // 1. Use box-specific price from flavor_box_prices if it exists
+  // 2. Fall back to the flavor's own price field (f.price)
+  // 3. Final fallback: 0
+  // This fixes the bug where prices show as zero when flavor_box_prices
+  // has no entry for a flavor — now the flavor's base price is used instead.
   const resolvedFlavorPrices = useMemo<Record<string, number>>(() => {
     const map: Record<string, number> = {};
     flavors.forEach((f) => {
-      map[f.id] = boxFlavorPrices[f.id] ?? 0;
+      map[f.id] = boxFlavorPrices[f.id] ?? Number(f.price) ?? 0;
     });
     return map;
   }, [flavors, boxFlavorPrices]);
 
-  // Selection map: flavor_id -> quantity
   const [selection, setSelection] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -68,14 +75,12 @@ function BoxDetail() {
     [selection],
   );
 
-  // For BYO boxes: price = sum of (resolved per-flavor price × qty)
   const byoPrice = useMemo(() => {
     return Object.entries(selection).reduce((total, [flavor_id, qty]) => {
       return total + (resolvedFlavorPrices[flavor_id] ?? 0) * qty;
     }, 0);
   }, [selection, resolvedFlavorPrices]);
 
-  // Minimum starting price for BYO (cheapest flavor × cookie count), null while loading
   const minByoPrice = useMemo(() => {
     const prices = Object.values(resolvedFlavorPrices).filter((p) => p > 0);
     return prices.length > 0 ? Math.min(...prices) : null;
@@ -192,16 +197,23 @@ function BoxDetail() {
           </div>
           <h1 className="mt-3 font-display text-4xl">{localizedName(box, locale)}</h1>
           <p className="mt-2 text-muted-foreground">{localizedDesc(box, locale)}</p>
+
+          {/* Price display — always visible */}
           <p className="mt-4 font-display text-3xl">
-            {isFixed
-              ? formatCurrency(box.price)
-              : totalSelected > 0
-              ? formatCurrency(byoPrice)
-              : minByoPrice !== null
-              ? `From ${formatCurrency(minByoPrice * cookieCount)}`
-              : isFlavorsLoading
-              ? <span className="inline-block h-5 w-24 animate-pulse rounded bg-muted align-middle" />
-              : null}
+            {isFixed ? (
+              formatCurrency(box.price)
+            ) : totalSelected > 0 ? (
+              formatCurrency(byoPrice)
+            ) : minByoPrice !== null ? (
+              <>
+                <span className="block text-base font-normal text-muted-foreground">
+                  {t("box.starting_from")}
+                </span>
+                {formatCurrency(minByoPrice * cookieCount)}
+              </>
+            ) : isFlavorsLoading ? (
+              <span className="inline-block h-5 w-24 animate-pulse rounded bg-muted align-middle" />
+            ) : null}
           </p>
         </div>
 
@@ -250,7 +262,10 @@ function BoxDetail() {
             )}
           >
             <ShoppingBag className="h-4 w-4" />
-            {t("cta.add_to_cart")} — {formatCurrency(isFixed ? box.price : byoPrice)}
+            {t("cta.add_to_cart")}
+            {(isFixed ? box.price : byoPrice) > 0 && (
+              <> — {formatCurrency(isFixed ? box.price : byoPrice)}</>
+            )}
           </button>
         </div>
       </div>
@@ -309,6 +324,7 @@ function BYOPicker({
           const unavailable = f.is_out_of_stock;
           const isFull = remaining === 0;
           const disabledAdd = unavailable || (isFull && qty === 0);
+          const flavorPrice = resolvedPrices[f.id] ?? 0;
           return (
             <div
               key={f.id}
@@ -339,9 +355,10 @@ function BYOPicker({
                     {localizedDesc(f, locale)}
                   </p>
                 )}
-                {(resolvedPrices[f.id] ?? 0) > 0 && (
+                {/* Show price per cookie — visible on all screen sizes */}
+                {flavorPrice > 0 && (
                   <p className="mt-0.5 text-xs font-semibold text-primary">
-                    {formatCurrency(resolvedPrices[f.id])} / cookie
+                    {formatCurrency(flavorPrice)} / cookie
                   </p>
                 )}
               </div>
