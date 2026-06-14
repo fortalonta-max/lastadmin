@@ -4,7 +4,13 @@ import { ArrowRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
-import { fetchBoxes, localizedName, localizedDesc, type Box } from "@/lib/storefront";
+import {
+  fetchBoxes,
+  fetchByoPriceRangePerBox,
+  localizedName,
+  localizedDesc,
+  type Box,
+} from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/buildbox")({
@@ -22,6 +28,12 @@ export const Route = createFileRoute("/buildbox")({
 function BuildBoxPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
+
+  // Fetch the lowest flavor price available per box from flavor_box_prices
+  const { data: priceRanges = {} } = useQuery({
+    queryKey: ["byo-price-ranges"],
+    queryFn: fetchByoPriceRangePerBox,
+  });
 
   const boxes = allBoxes.filter((b) => b.type === "byo");
 
@@ -55,14 +67,20 @@ function BuildBoxPage() {
             <div className="py-20 text-center text-sm text-muted-foreground">No build-your-own boxes available yet.</div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-              {boxes.map((b) => (
-                <BoxCard
-                  key={b.id}
-                  box={b}
-                  locale={locale}
-                  t={t}
-                />
-              ))}
+              {boxes.map((b) => {
+                // Starting price = lowest flavor price × number of cookies in the box
+                const lowestFlavorPrice = priceRanges[b.id]?.min ?? 0;
+                const startingPrice = lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0;
+                return (
+                  <BoxCard
+                    key={b.id}
+                    box={b}
+                    locale={locale}
+                    t={t}
+                    startingPrice={startingPrice}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -76,10 +94,12 @@ function BoxCard({
   box: b,
   locale,
   t,
+  startingPrice,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
+  startingPrice: number;
 }) {
 
   return (
@@ -116,12 +136,12 @@ function BoxCard({
         )}
         <div className="mt-2 flex items-center justify-between sm:mt-4">
           <div>
-            {b.price > 0 ? (
+            {startingPrice > 0 ? (
               <p className="font-display text-base sm:text-2xl">
                 <span className="text-xs font-normal text-muted-foreground sm:text-sm">
                   {t("box.starting_from")}{" "}
                 </span>
-                {formatCurrency(b.price)}
+                {formatCurrency(startingPrice)}
               </p>
             ) : null}
           </div>

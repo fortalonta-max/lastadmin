@@ -6,6 +6,7 @@ import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchBoxes,
+  fetchByoPriceRangePerBox,
   localizedName,
   localizedDesc,
   type Box,
@@ -27,6 +28,12 @@ export const Route = createFileRoute("/boxes/")({
 function BoxesPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
+
+  // Fetch the lowest flavor price available per BYO box from flavor_box_prices
+  const { data: priceRanges = {} } = useQuery({
+    queryKey: ["byo-price-ranges"],
+    queryFn: fetchByoPriceRangePerBox,
+  });
 
   return (
     <div className="min-h-screen">
@@ -57,14 +64,20 @@ function BoxesPage() {
             <div className="py-20 text-center text-sm text-muted-foreground">No boxes available yet.</div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-              {allBoxes.map((b) => (
-                <BoxCard
-                  key={b.id}
-                  box={b}
-                  locale={locale}
-                  t={t}
-                />
-              ))}
+              {allBoxes.map((b) => {
+                // For BYO boxes: starting price = lowest flavor price × number of cookies in the box
+                const lowestFlavorPrice = b.type === "byo" ? (priceRanges[b.id]?.min ?? 0) : 0;
+                const startingPrice = lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0;
+                return (
+                  <BoxCard
+                    key={b.id}
+                    box={b}
+                    locale={locale}
+                    t={t}
+                    startingPrice={startingPrice}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -78,12 +91,17 @@ function BoxCard({
   box: b,
   locale,
   t,
+  startingPrice,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
+  startingPrice: number;
 }) {
   const isByo = b.type === "byo";
+
+  // For BYO boxes use the computed starting price; for fixed boxes use the stored price
+  const displayPrice = isByo ? startingPrice : b.price;
 
   return (
     <Link
@@ -121,14 +139,14 @@ function BoxCard({
         )}
         <div className="mt-2 flex items-center justify-between sm:mt-4">
           <div>
-            {b.price > 0 ? (
+            {displayPrice > 0 ? (
               <p className="font-display text-base sm:text-2xl">
                 {isByo && (
                   <span className="hidden sm:inline text-sm font-normal text-muted-foreground">
                     {t("box.starting_from")}{" "}
                   </span>
                 )}
-                {formatCurrency(b.price)}
+                {formatCurrency(displayPrice)}
               </p>
             ) : null}
           </div>
