@@ -10,11 +10,69 @@ import { useCart, formatCurrency } from "@/lib/cart";
 import { fetchSettings } from "@/lib/storefront";
 import { placeOrder } from "@/lib/orders.functions";
 import { trackPixel } from "@/lib/meta-pixel";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({ meta: [{ title: "Checkout — Leen Bakery" }] }),
   component: CheckoutPage,
 });
+
+// Delivery is allowed between 13:00 and 21:00 (1 PM – 9 PM)
+const DELIVERY_START_HOUR = 13;
+const DELIVERY_END_HOUR = 21;
+const MIN_ADVANCE_HOURS = 3;
+
+/** Build all possible time slots (every 30 min) between 13:00 and 21:00 */
+function buildAllSlots(): string[] {
+  const slots: string[] = [];
+  for (let h = DELIVERY_START_HOUR; h <= DELIVERY_END_HOUR; h++) {
+    for (const m of [0, 30]) {
+      if (h === DELIVERY_END_HOUR && m > 0) break;
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+  }
+  return slots;
+}
+
+const ALL_SLOTS = buildAllSlots();
+
+/** Format a "HH:MM" string to "1:00 PM" style */
+function formatTime(slot: string): string {
+  const [h, m] = slot.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+/** Format a Date as YYYY-MM-DD (local) */
+function toISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Returns the available slots for a given date.
+ * For today: only slots at least MIN_ADVANCE_HOURS ahead of now.
+ * For future dates: all slots.
+ */
+function availableSlotsForDate(date: Date): string[] {
+  const now = new Date();
+  const todayStr = toISODate(now);
+  const selectedStr = toISODate(date);
+
+  if (selectedStr !== todayStr) return ALL_SLOTS;
+
+  // Same-day: slot start must be >= now + 3h
+  const cutoff = new Date(now.getTime() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
+  const cutoffMinutes = cutoff.getHours() * 60 + cutoff.getMinutes();
+
+  return ALL_SLOTS.filter((slot) => {
+    const [h, m] = slot.split(":").map(Number);
+    return h * 60 + m >= cutoffMinutes;
+  });
+}
 
 function CheckoutPage() {
   const { t } = useI18n();
@@ -31,6 +89,79 @@ function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const orderSubmittedRef = useRef(false);
+
+  // Delivery scheduling state
+  type DateOption = "today" | "tomorrow" | "other";
+  const [dateOption, setDateOption] = useState<DateOption | null>(null);
+  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+
+  const tomorrowMidnight = new Date(todayMidnight);
+  tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
+
+  // Resolve the actual Date from the chosen option
+  const selectedDate: Date | undefined = (() => {
+    if (dateOption === "today") return todayMidnight;
+    if (dateOption === "tomorrow") return tomorrowMidnight;
+    if (dateOption === "other") return customDate;
+    return undefined;
+  })();
+
+  const dateStr = selectedDate ? toISODate(selectedDate) : null;
+  const todayStr = toISODate(new Date());
+
+  // Fetch blocked slots for the selected date (so checkout hides admin-blocked slots)
+  const { data: blockedForSelected = [] } = useQuery({
+    queryKey: ["blocked-slots", dateStr],
+    queryFn: async () => {
+      if (!dateStr) return [];
+      const { data } = await supabase
+        .from("blocked_delivery_slots")
+        .select("slot_time")
+        .eq("slot_date", dateStr);
+      return (data ?? []).map((r: any) => r.slot_time as string);
+    },
+    enabled: !!dateStr,
+  });
+
+  // Also fetch blocked slots for today to update the "no slots today" warning
+  const { data: blockedToday = [] } = useQuery({
+    queryKey: ["blocked-slots", todayStr],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("blocked_delivery_slots")
+        .select("slot_time")
+        .eq("slot_date", todayStr);
+      return (data ?? []).map((r: any) => r.slot_time as string);
+    },
+  });
+
+  const blockedForSelectedSet = new Set(blockedForSelected);
+  const blockedTodaySet = new Set(blockedToday);
+
+  const noSlotsToday =
+    availableSlotsForDate(new Date()).filter((s) => !blockedTodaySet.has(s)).length === 0;
+  const availableSlots = selectedDate
+    ? availableSlotsForDate(selectedDate).filter((s) => !blockedForSelectedSet.has(s))
+    : [];
+
+  // When date changes (or blocked slots load), reset time if it's no longer valid
+  useEffect(() => {
+    if (!selectedDate) { setSelectedTime(""); return; }
+    const slots = availableSlotsForDate(selectedDate).filter((s) => !blockedForSelectedSet.has(s));
+    if (selectedTime && !slots.includes(selectedTime)) setSelectedTime("");
+  }, [selectedDate, blockedForSelected]);
+
+  function handleDateOption(opt: DateOption) {
+    setDateOption(opt);
+    setSelectedTime("");
+    if (opt !== "other") setCustomDate(undefined);
+    if (opt === "other") setCalendarOpen(true);
+  }
 
   const isFreeShipping = subtotal - discount >= freeShippingThreshold;
   const deliveryFee = isFreeShipping ? 0 : baseDeliveryFee;
@@ -76,6 +207,14 @@ function CheckoutPage() {
       toast.error("Please complete required fields");
       return;
     }
+    if (!selectedDate) {
+      toast.error("Please select a delivery date");
+      return;
+    }
+    if (!selectedTime) {
+      toast.error("Please select a delivery time");
+      return;
+    }
     setSubmitting(true);
     try {
       const eventId = crypto.randomUUID();
@@ -95,6 +234,8 @@ function CheckoutPage() {
             selected_flavors: i.selected_flavors,
           })),
           coupon_code: appliedCoupon ?? undefined,
+          delivery_date: toISODate(selectedDate),
+          delivery_time_slot: selectedTime,
           meta: {
             event_id: eventId,
             user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
@@ -128,6 +269,8 @@ function CheckoutPage() {
           discount,
           delivery_fee: deliveryFee,
           total: Number(res.total),
+          delivery_date: toISODate(selectedDate),
+          delivery_time_slot: selectedTime,
         };
         sessionStorage.setItem(`order-invoice-${res.id}`, JSON.stringify(invoice));
       }
@@ -165,6 +308,119 @@ function CheckoutPage() {
             <Field label={t("checkout.phone")} value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} required type="tel" />
             <Field label={t("checkout.address")} value={form.address} onChange={(v) => setForm({ ...form, address: v })} required textarea />
             <Field label={t("checkout.notes")} value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} textarea />
+
+            {/* Delivery Schedule Section */}
+            <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-medium text-sm">{t("checkout.delivery_schedule")}</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("checkout.delivery_window")}</p>
+
+              {/* Date Picker — 3 quick options */}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  {t("checkout.delivery_date")}<span className="text-destructive"> *</span>
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {/* Today */}
+                  <button
+                    type="button"
+                    disabled={noSlotsToday}
+                    onClick={() => handleDateOption("today")}
+                    className={`flex-1 min-w-[80px] rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      dateOption === "today"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background hover:bg-muted"
+                    }`}
+                  >
+                    Today
+                  </button>
+                  {/* Tomorrow */}
+                  <button
+                    type="button"
+                    onClick={() => handleDateOption("tomorrow")}
+                    className={`flex-1 min-w-[80px] rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
+                      dateOption === "tomorrow"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background hover:bg-muted"
+                    }`}
+                  >
+                    Tomorrow
+                  </button>
+                  {/* Another day */}
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => handleDateOption("other")}
+                        className={`flex-1 min-w-[110px] inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
+                          dateOption === "other"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background hover:bg-muted"
+                        }`}
+                      >
+                        <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+                        {dateOption === "other" && customDate
+                          ? customDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+                          : "Another day"}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customDate}
+                        onSelect={(d) => {
+                          setCustomDate(d);
+                          setCalendarOpen(false);
+                        }}
+                        disabled={(date) => {
+                          const d = new Date(date);
+                          d.setHours(0, 0, 0, 0);
+                          // Disable past, today, and tomorrow (those have dedicated buttons)
+                          return d <= tomorrowMidnight;
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {noSlotsToday && (
+                  <p className="mt-1.5 text-xs text-amber-600">{t("checkout.no_slots_today")}</p>
+                )}
+              </div>
+
+              {/* Time Slot Picker */}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  {t("checkout.delivery_time")}<span className="text-destructive"> *</span>
+                </label>
+                {!selectedDate ? (
+                  <p className="text-xs text-muted-foreground">{t("checkout.select_date_first")}</p>
+                ) : availableSlots.length === 0 ? (
+                  <p className="text-xs text-amber-600">{t("checkout.no_slots_today")}</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {availableSlots.map((slot) => (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => setSelectedTime(slot)}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          selectedTime === slot
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background hover:bg-muted"
+                        }`}
+                      >
+                        <Clock className="h-3 w-3" />
+                        {formatTime(slot)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-border/60 bg-[var(--blue-soft)] p-4 text-sm">
               💵 {t("checkout.cod")}
             </div>
@@ -182,6 +438,25 @@ function CheckoutPage() {
                 </li>
               ))}
             </ul>
+
+            {/* Delivery schedule summary */}
+            {(selectedDate || selectedTime) && (
+              <div className="mt-4 rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-xs space-y-1">
+                {selectedDate && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <CalendarIcon className="h-3 w-3 shrink-0" />
+                    <span>{selectedDate.toLocaleDateString(undefined, { weekday: "short", year: "numeric", month: "short", day: "numeric" })}</span>
+                  </div>
+                )}
+                {selectedTime && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    <span>{formatTime(selectedTime)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="mt-4 border-t border-border/60 pt-4">
               <div className="flex gap-2">
                 <input

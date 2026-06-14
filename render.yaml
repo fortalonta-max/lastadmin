@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: nyc-cookies
+    env: node
+    plan: starter
+    # VITE_* variables are embedded at build time, so they must be set
+    # as environment variables before the build runs (not just at runtime).
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server/index.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Supabase — fill these in on the Render dashboard or via render.yaml secrets
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      # Session secret used by the server (set in Render dashboard)
+      - key: SESSION_SECRET
+        sync: false

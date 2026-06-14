@@ -58,6 +58,8 @@ export async function notifyNewOrder(
     delivery_fee: number;
     total: number;
     coupon_code?: string | null;
+    delivery_date?: string | null;
+    delivery_time_slot?: string | null;
   },
 ): Promise<void> {
   const fmt = (n: number) => `${n.toLocaleString("en-EG")} EGP`;
@@ -84,6 +86,19 @@ export async function notifyNewOrder(
     `Address: ${order.customer_address}`,
   ];
   if (order.notes) lines.push(`Notes:   ${order.notes}`);
+
+  if (order.delivery_date || order.delivery_time_slot) {
+    lines.push("");
+    lines.push("DELIVERY SCHEDULE:");
+    if (order.delivery_date) lines.push(`  Date: ${order.delivery_date}`);
+    if (order.delivery_time_slot) {
+      const [h, m] = order.delivery_time_slot.split(":").map(Number);
+      const ampm = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      lines.push(`  Time: ${h12}:${String(m).padStart(2, "0")} ${ampm}`);
+    }
+  }
+
   lines.push("", "ITEMS:", itemLines, "");
   lines.push(`Subtotal:  ${fmt(order.subtotal)}`);
   if (order.discount > 0)

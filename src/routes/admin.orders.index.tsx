@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pencil, Trash2, CheckCheck } from "lucide-react";
+import { Pencil, Trash2, CheckCheck, CalendarIcon, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/cart";
@@ -23,6 +23,8 @@ type OrderRow = {
   total: number;
   status: string;
   created_at: string;
+  delivery_date: string | null;
+  delivery_time_slot: string | null;
 };
 
 type EditState = {
@@ -32,7 +34,24 @@ type EditState = {
   customer_address: string;
   notes: string;
   status: string;
+  delivery_date: string;
+  delivery_time_slot: string;
 };
+
+/** Format "HH:MM" to "1:00 PM" */
+function formatTime(slot: string): string {
+  const [h, m] = slot.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+/** Format "YYYY-MM-DD" to a short readable date */
+function formatDate(dateStr: string): string {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, mo - 1, d);
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 
 function OrdersList() {
   const { t } = useI18n();
@@ -67,15 +86,24 @@ function OrdersList() {
 
   async function saveEdit() {
     if (!editOrder) return;
+
+    // Normalise to plain "HH:MM:SS" string — never a Date or timestamp.
+    // delivery_time_slot is TEXT — store the "HH:MM" string exactly as-is.
+    const updatePayload = {
+      customer_name: editOrder.customer_name,
+      customer_phone: editOrder.customer_phone,
+      customer_address: editOrder.customer_address,
+      notes: editOrder.notes || null,
+      status: editOrder.status,
+      delivery_date: editOrder.delivery_date || null,
+      delivery_time_slot: editOrder.delivery_time_slot || null,
+    };
+
+    console.log("FINAL PAYLOAD SENT TO SUPABASE:", JSON.stringify(updatePayload));
+
     const { error } = await supabase
       .from("orders")
-      .update({
-        customer_name: editOrder.customer_name,
-        customer_phone: editOrder.customer_phone,
-        customer_address: editOrder.customer_address,
-        notes: editOrder.notes || null,
-        status: editOrder.status,
-      })
+      .update(updatePayload)
       .eq("id", editOrder.id);
     if (error) return toast.error(error.message);
     toast.success(t("admin.save"));
@@ -107,6 +135,7 @@ function OrdersList() {
               <th className="px-4 py-3 text-start">{t("admin.ord.col_phone")}</th>
               <th className="px-4 py-3 text-start">{t("admin.ord.col_total")}</th>
               <th className="px-4 py-3 text-start">{t("admin.ord.col_status")}</th>
+              <th className="px-4 py-3 text-start">{t("admin.ord.col_delivery")}</th>
               <th className="px-4 py-3 text-start">{t("admin.ord.col_date")}</th>
               <th className="px-4 py-3 text-end">{t("admin.ord.col_actions")}</th>
             </tr>
@@ -124,6 +153,26 @@ function OrdersList() {
                 <td className="px-4 py-3 font-semibold">{formatCurrency(Number(o.total))}</td>
                 <td className="px-4 py-3">
                   <StatusPill status={o.status as typeof STATUSES[number]} />
+                </td>
+                <td className="px-4 py-3">
+                  {o.delivery_date || o.delivery_time_slot ? (
+                    <div className="space-y-0.5">
+                      {o.delivery_date && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <CalendarIcon className="h-3 w-3 shrink-0" />
+                          {formatDate(o.delivery_date)}
+                        </div>
+                      )}
+                      {o.delivery_time_slot && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          {formatTime(o.delivery_time_slot)}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">
                   {new Date(o.created_at).toLocaleString()}
@@ -151,6 +200,8 @@ function OrdersList() {
                           customer_address: o.customer_address,
                           notes: o.notes ?? "",
                           status: o.status,
+                          delivery_date: o.delivery_date ?? "",
+                          delivery_time_slot: o.delivery_time_slot ?? "",
                         })
                       }
                       className="inline-grid h-7 w-7 place-items-center rounded hover:bg-muted"
@@ -171,7 +222,7 @@ function OrdersList() {
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
                   {t("admin.ord.no_orders")}
                 </td>
               </tr>
@@ -183,7 +234,7 @@ function OrdersList() {
       {/* Edit Order Modal */}
       {editOrder && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-card p-6">
+          <div className="w-full max-w-md rounded-2xl bg-card p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="mb-4 font-display text-xl">{t("admin.ord.edit_title")}</h2>
             <div className="space-y-3">
               <FieldInput
@@ -220,6 +271,18 @@ function OrdersList() {
                   ))}
                 </select>
               </label>
+              <FieldInput
+                label={t("admin.ord.delivery_date")}
+                value={editOrder.delivery_date}
+                onChange={(v) => setEditOrder({ ...editOrder, delivery_date: v })}
+                type="date"
+              />
+              <FieldInput
+                label={t("admin.ord.delivery_time")}
+                value={editOrder.delivery_time_slot}
+                onChange={(v) => setEditOrder({ ...editOrder, delivery_time_slot: v })}
+                type="time"
+              />
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <button
@@ -242,11 +305,12 @@ function OrdersList() {
   );
 }
 
-function FieldInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function FieldInput({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium">{label}</span>
       <input
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"

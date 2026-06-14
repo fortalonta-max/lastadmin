@@ -21,12 +21,14 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as BoxesSlugRouteImport } from './routes/boxes.$slug'
+import { Route as AdminSocialRouteImport } from './routes/admin.social'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminFlavorsRouteImport } from './routes/admin.flavors'
 import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
+import { Route as AdminDeliveryRouteImport } from './routes/admin.delivery'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminBoxesRouteImport } from './routes/admin.boxes'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
@@ -92,6 +94,11 @@ const BoxesSlugRoute = BoxesSlugRouteImport.update({
   path: '/boxes/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSocialRoute = AdminSocialRouteImport.update({
+  id: '/social',
+  path: '/social',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -120,6 +127,11 @@ const AdminFlavorsRoute = AdminFlavorsRouteImport.update({
 const AdminFaqsRoute = AdminFaqsRouteImport.update({
   id: '/faqs',
   path: '/faqs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDeliveryRoute = AdminDeliveryRouteImport.update({
+  id: '/delivery',
+  path: '/delivery',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCouponsRoute = AdminCouponsRouteImport.update({
@@ -152,12 +164,14 @@ export interface FileRoutesByFullPath {
   '/flavors': typeof FlavorsRoute
   '/admin/boxes': typeof AdminBoxesRoute
   '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/flavors': typeof AdminFlavorsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/social': typeof AdminSocialRoute
   '/boxes/$slug': typeof BoxesSlugRoute
   '/order/$id': typeof OrderIdRoute
   '/products/$slug': typeof ProductsSlugRoute
@@ -175,12 +189,14 @@ export interface FileRoutesByTo {
   '/flavors': typeof FlavorsRoute
   '/admin/boxes': typeof AdminBoxesRoute
   '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/flavors': typeof AdminFlavorsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/social': typeof AdminSocialRoute
   '/boxes/$slug': typeof BoxesSlugRoute
   '/order/$id': typeof OrderIdRoute
   '/products/$slug': typeof ProductsSlugRoute
@@ -200,12 +216,14 @@ export interface FileRoutesById {
   '/flavors': typeof FlavorsRoute
   '/admin/boxes': typeof AdminBoxesRoute
   '/admin/coupons': typeof AdminCouponsRoute
+  '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/flavors': typeof AdminFlavorsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/social': typeof AdminSocialRoute
   '/boxes/$slug': typeof BoxesSlugRoute
   '/order/$id': typeof OrderIdRoute
   '/products/$slug': typeof ProductsSlugRoute
@@ -226,12 +244,14 @@ export interface FileRouteTypes {
     | '/flavors'
     | '/admin/boxes'
     | '/admin/coupons'
+    | '/admin/delivery'
     | '/admin/faqs'
     | '/admin/flavors'
     | '/admin/login'
     | '/admin/products'
     | '/admin/reviews'
     | '/admin/settings'
+    | '/admin/social'
     | '/boxes/$slug'
     | '/order/$id'
     | '/products/$slug'
@@ -249,12 +269,14 @@ export interface FileRouteTypes {
     | '/flavors'
     | '/admin/boxes'
     | '/admin/coupons'
+    | '/admin/delivery'
     | '/admin/faqs'
     | '/admin/flavors'
     | '/admin/login'
     | '/admin/products'
     | '/admin/reviews'
     | '/admin/settings'
+    | '/admin/social'
     | '/boxes/$slug'
     | '/order/$id'
     | '/products/$slug'
@@ -273,12 +295,14 @@ export interface FileRouteTypes {
     | '/flavors'
     | '/admin/boxes'
     | '/admin/coupons'
+    | '/admin/delivery'
     | '/admin/faqs'
     | '/admin/flavors'
     | '/admin/login'
     | '/admin/products'
     | '/admin/reviews'
     | '/admin/settings'
+    | '/admin/social'
     | '/boxes/$slug'
     | '/order/$id'
     | '/products/$slug'
@@ -389,6 +413,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoxesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/social': {
+      id: '/admin/social'
+      path: '/social'
+      fullPath: '/admin/social'
+      preLoaderRoute: typeof AdminSocialRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -431,6 +462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFaqsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/delivery': {
+      id: '/admin/delivery'
+      path: '/delivery'
+      fullPath: '/admin/delivery'
+      preLoaderRoute: typeof AdminDeliveryRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/coupons': {
       id: '/admin/coupons'
       path: '/coupons'
@@ -465,12 +503,14 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminBoxesRoute: typeof AdminBoxesRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
+  AdminDeliveryRoute: typeof AdminDeliveryRoute
   AdminFaqsRoute: typeof AdminFaqsRoute
   AdminFlavorsRoute: typeof AdminFlavorsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSocialRoute: typeof AdminSocialRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminOrdersIdRoute: typeof AdminOrdersIdRoute
   AdminOrdersIndexRoute: typeof AdminOrdersIndexRoute
@@ -479,12 +519,14 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBoxesRoute: AdminBoxesRoute,
   AdminCouponsRoute: AdminCouponsRoute,
+  AdminDeliveryRoute: AdminDeliveryRoute,
   AdminFaqsRoute: AdminFaqsRoute,
   AdminFlavorsRoute: AdminFlavorsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminReviewsRoute: AdminReviewsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminSocialRoute: AdminSocialRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminOrdersIdRoute: AdminOrdersIdRoute,
   AdminOrdersIndexRoute: AdminOrdersIndexRoute,

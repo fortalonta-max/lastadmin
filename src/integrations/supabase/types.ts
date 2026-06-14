@@ -303,7 +303,9 @@ export type Database = {
           customer_address: string
           customer_name: string
           customer_phone: string
+          delivery_date: string | null
           delivery_fee: number
+          delivery_time_slot: string | null
           discount: number
           id: string
           meta_event_id: string | null
@@ -320,7 +322,9 @@ export type Database = {
           customer_address: string
           customer_name: string
           customer_phone: string
+          delivery_date?: string | null
           delivery_fee?: number
+          delivery_time_slot?: string | null
           discount?: number
           id?: string
           meta_event_id?: string | null
@@ -337,7 +341,9 @@ export type Database = {
           customer_address?: string
           customer_name?: string
           customer_phone?: string
+          delivery_date?: string | null
           delivery_fee?: number
+          delivery_time_slot?: string | null
           discount?: number
           id?: string
           meta_event_id?: string | null

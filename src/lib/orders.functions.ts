@@ -26,6 +26,8 @@ const PlaceOrderInput = z.object({
   }),
   items: z.array(OrderItem).min(1).max(50),
   coupon_code: z.string().trim().max(50).optional(),
+  delivery_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  delivery_time_slot: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   meta: z
     .object({
       event_id: z.string().max(100).optional(),
@@ -135,20 +137,28 @@ export const placeOrder = createServerFn({ method: "POST" })
     const total = Math.max(0, subtotal - discount + deliveryFee);
     const eventId = data.meta?.event_id ?? crypto.randomUUID();
 
+    // delivery_time_slot is a plain TEXT column — store the "HH:MM" string as-is.
+    // Never write to `delivery_time` (timestamp without time zone).
+    const insertPayload = {
+      customer_name: data.customer.name,
+      customer_phone: data.customer.phone,
+      customer_address: data.customer.address,
+      notes: data.customer.notes ?? null,
+      subtotal,
+      delivery_fee: deliveryFee,
+      discount,
+      total,
+      coupon_code: appliedCode,
+      meta_event_id: eventId,
+      delivery_date: data.delivery_date ?? null,
+      delivery_time_slot: data.delivery_time_slot ?? null,
+    };
+
+    console.log("FINAL PAYLOAD SENT TO SUPABASE:", JSON.stringify(insertPayload));
+
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
-      .insert({
-        customer_name: data.customer.name,
-        customer_phone: data.customer.phone,
-        customer_address: data.customer.address,
-        notes: data.customer.notes ?? null,
-        subtotal,
-        delivery_fee: deliveryFee,
-        discount,
-        total,
-        coupon_code: appliedCode,
-        meta_event_id: eventId,
-      })
+      .insert(insertPayload)
       .select("*")
       .single();
     if (orderErr || !order) throw new Error(orderErr?.message ?? "Failed to create order");
@@ -192,6 +202,8 @@ export const placeOrder = createServerFn({ method: "POST" })
           delivery_fee: deliveryFee,
           total,
           coupon_code: appliedCode,
+          delivery_date: data.delivery_date,
+          delivery_time_slot: data.delivery_time_slot,
         });
       }
     } catch (e) {

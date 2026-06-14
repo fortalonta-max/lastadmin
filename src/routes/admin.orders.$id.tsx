@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/cart";
@@ -12,6 +12,21 @@ export const Route = createFileRoute("/admin/orders/$id")({
 });
 
 const STATUSES = ["pending", "confirmed", "preparing", "out_for_delivery", "delivered", "cancelled"] as const;
+
+/** Format "HH:MM" to "1:00 PM" */
+function formatTime(slot: string): string {
+  const [h, m] = slot.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+/** Format "YYYY-MM-DD" to a readable date string */
+function formatDate(dateStr: string): string {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, mo - 1, d);
+  return date.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
 
 function OrderDetail() {
   const { id } = Route.useParams();
@@ -106,6 +121,28 @@ function OrderDetail() {
             <p className="mt-2 whitespace-pre-line text-sm">{order.customer_address}</p>
             {order.notes && (
               <p className="mt-3 rounded-lg bg-muted p-3 text-xs italic">{order.notes}</p>
+            )}
+          </Box>
+
+          {/* Delivery Schedule */}
+          <Box title="Delivery Schedule">
+            {(order as any).delivery_date || (order as any).delivery_time_slot ? (
+              <div className="space-y-2">
+                {(order as any).delivery_date && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <CalendarIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span>{formatDate((order as any).delivery_date)}</span>
+                  </div>
+                )}
+                {(order as any).delivery_time_slot && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span>{formatTime((order as any).delivery_time_slot)}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Not scheduled</p>
             )}
           </Box>
         </aside>

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, MessageCircle, Home } from "lucide-react";
+import { CheckCircle2, MessageCircle, Home, CalendarIcon, Clock } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +33,23 @@ interface InvoiceData {
   discount: number;
   delivery_fee: number;
   total: number;
+  delivery_date?: string | null;
+  delivery_time_slot?: string | null;
+}
+
+/** Format "HH:MM" to "1:00 PM" */
+function formatTime(slot: string): string {
+  const [h, m] = slot.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+/** Format "YYYY-MM-DD" to a readable date string */
+function formatDate(dateStr: string): string {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, mo - 1, d);
+  return date.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 }
 
 function buildWhatsAppMessage(invoice: InvoiceData, id: string): string {
@@ -51,6 +68,13 @@ function buildWhatsAppMessage(invoice: InvoiceData, id: string): string {
     lines.push(`Notes: ${invoice.customer.notes}`);
   }
   lines.push(``);
+
+  if (invoice.delivery_date || invoice.delivery_time_slot) {
+    lines.push(`*🗓️ Delivery Schedule*`);
+    if (invoice.delivery_date) lines.push(`Date: ${formatDate(invoice.delivery_date)}`);
+    if (invoice.delivery_time_slot) lines.push(`Time: ${formatTime(invoice.delivery_time_slot)}`);
+    lines.push(``);
+  }
 
   lines.push(`*📦 Order Items*`);
   for (const item of invoice.items) {
@@ -142,6 +166,24 @@ function OrderPage() {
           {t("order.confirmed")}
         </p>
 
+        {/* Delivery schedule pill */}
+        {(invoice?.delivery_date || invoice?.delivery_time_slot) && (
+          <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card px-5 py-3 text-sm">
+            {invoice?.delivery_date && (
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <CalendarIcon className="h-4 w-4 shrink-0" />
+                {formatDate(invoice.delivery_date)}
+              </span>
+            )}
+            {invoice?.delivery_time_slot && (
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                {formatTime(invoice.delivery_time_slot)}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* WhatsApp button — always shown when a phone number is configured */}
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           {phone && (
@@ -180,6 +222,27 @@ function OrderPage() {
                 </p>
               )}
             </div>
+
+            {/* Delivery schedule in invoice */}
+            {(invoice.delivery_date || invoice.delivery_time_slot) && (
+              <div className="mb-4 rounded-xl border border-border/60 bg-muted/40 px-4 py-3 space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("order.delivery_schedule")}
+                </p>
+                {invoice.delivery_date && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span>{formatDate(invoice.delivery_date)}</span>
+                  </div>
+                )}
+                {invoice.delivery_time_slot && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span>{formatTime(invoice.delivery_time_slot)}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <ul className="mb-4 divide-y divide-border/60">
               {invoice.items.map((item, idx) => (
