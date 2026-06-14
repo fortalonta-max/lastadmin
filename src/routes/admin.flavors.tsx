@@ -65,7 +65,7 @@ function FlavorsAdmin() {
       is_available: f.is_available ?? true,
       is_limited_edition: f.is_limited_edition ?? false,
       is_out_of_stock: f.is_out_of_stock ?? false,
-      price: Number(f.price ?? 0),
+      price: 0,
       sort_order: Number(f.sort_order ?? 0),
     };
 
@@ -212,7 +212,6 @@ function FlavorEditor({
           <Input label="Slug" value={f.slug ?? ""} onChange={(v) => setF({ ...f, slug: v })} placeholder="auto from name" />
           <Textarea label="Description (EN)" value={f.description_en ?? ""} onChange={(v) => setF({ ...f, description_en: v })} />
           <Textarea label="Description (AR)" value={f.description_ar ?? ""} onChange={(v) => setF({ ...f, description_ar: v })} />
-          <Input label="Default price (per cookie)" type="number" value={String(f.price ?? 0)} onChange={(v) => setF({ ...f, price: Number(v) })} />
           <Input label="Sort order" type="number" value={String(f.sort_order ?? 0)} onChange={(v) => setF({ ...f, sort_order: Number(v) })} />
           <div className="grid grid-cols-3 gap-2 text-sm">
             <Toggle label="Available" checked={f.is_available ?? true} onChange={(v) => setF({ ...f, is_available: v })} />
@@ -223,7 +222,7 @@ function FlavorEditor({
             <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-3">
               <p className="text-xs font-semibold">Price per cookie — by box</p>
               <p className="text-[11px] text-muted-foreground">
-                Set a specific price for this flavor in each box. Leave blank to use the default price above.
+                Set the price per cookie for this flavor in each box. This is the only price source used on the storefront.
               </p>
               {boxes.map((box) => (
                 <div key={box.id} className="flex items-center gap-3">

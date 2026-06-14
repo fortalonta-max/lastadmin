@@ -130,12 +130,6 @@ function BoxEditor({
   async function save() {
     if (!b.name_en?.trim()) return toast.error("Name (EN) required");
     const boxType = (b.type ?? "byo") as "fixed" | "byo";
-    // Auto-compute price from fixed flavors; BYO boxes are always 0
-    const flavorMap = Object.fromEntries(flavors.map((f) => [f.id, Number((f as { price?: number }).price ?? 0)]));
-    const autoPrice =
-      boxType === "fixed"
-        ? fixed.filter((x) => x.flavor_id && x.quantity > 0).reduce((sum, x) => sum + (flavorMap[x.flavor_id] ?? 0) * x.quantity, 0)
-        : 0;
     const payload = {
       slug: (b.slug ?? "").trim() || b.name_en.toLowerCase().replace(/\s+/g, "-"),
       name_en: b.name_en.trim(),
@@ -144,7 +138,7 @@ function BoxEditor({
       description_ar: b.description_ar?.trim() || null,
       image_url: b.image_url ?? null,
       cookie_count: Number(b.cookie_count ?? 6),
-      price: autoPrice,
+      price: 0,
       type: boxType,
       is_active: b.is_active ?? true,
       is_best_seller: b.is_best_seller ?? false,
@@ -159,14 +153,25 @@ function BoxEditor({
 
     if (payload.type === "fixed") {
       await supabase.from("box_fixed_flavors").delete().eq("box_id", boxId);
-      const rows = fixed.filter((x) => x.flavor_id && x.quantity > 0).map((x) => ({
-        box_id: boxId,
-        flavor_id: x.flavor_id,
-        quantity: x.quantity,
-      }));
+      const validFixed = fixed.filter((x) => x.flavor_id && x.quantity > 0);
+      const rows = validFixed.map((x) => ({ box_id: boxId, flavor_id: x.flavor_id, quantity: x.quantity }));
       if (rows.length) {
         const { error } = await supabase.from("box_fixed_flavors").insert(rows);
         if (error) return toast.error(error.message);
+      }
+      // Recompute box.price from flavor_box_prices (single source of truth)
+      if (validFixed.length > 0) {
+        const { data: fbp } = await supabase
+          .from("flavor_box_prices")
+          .select("flavor_id, price")
+          .eq("box_id", boxId)
+          .in("flavor_id", validFixed.map((x) => x.flavor_id));
+        const priceMap: Record<string, number> = {};
+        (fbp ?? []).forEach((row) => { priceMap[row.flavor_id] = Number(row.price); });
+        const computedPrice = validFixed.reduce((sum, x) => sum + (priceMap[x.flavor_id] ?? 0) * x.quantity, 0);
+        if (computedPrice > 0) {
+          await supabase.from("boxes").update({ price: computedPrice }).eq("id", boxId);
+        }
       }
     }
     toast.success("Saved");

@@ -47,11 +47,11 @@ function BoxDetail() {
     enabled: !!box?.id,
   });
 
-  // Resolved price per flavor: box-specific override first, then flavor default
+  // Resolved price per flavor: exclusively from flavor_box_prices (single source of truth)
   const resolvedFlavorPrices = useMemo<Record<string, number>>(() => {
     const map: Record<string, number> = {};
     flavors.forEach((f) => {
-      map[f.id] = f.id in boxFlavorPrices ? boxFlavorPrices[f.id] : (f.price ?? 0);
+      map[f.id] = boxFlavorPrices[f.id] ?? 0;
     });
     return map;
   }, [flavors, boxFlavorPrices]);

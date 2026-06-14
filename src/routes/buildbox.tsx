@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
-import { fetchBoxes, fetchFlavors, localizedName, localizedDesc, type Box } from "@/lib/storefront";
+import { fetchBoxes, fetchByoPriceRangePerBox, fetchDefaultFlavorPriceRange, localizedName, localizedDesc, type Box } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/buildbox")({
@@ -22,13 +22,11 @@ export const Route = createFileRoute("/buildbox")({
 function BuildBoxPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: flavors = [], isLoading: isFlavorsLoading } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
+  const { data: byoPrices = {}, isLoading: isPricesLoading } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
+  const { data: defaultRange = { min: 0, max: 0 }, isLoading: isRangeLoading } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
+  const pricesLoading = isPricesLoading || isRangeLoading;
 
   const boxes = allBoxes.filter((b) => b.type === "byo");
-
-  const flavorPrices = flavors.map((f) => f.price).filter((p) => p > 0);
-  const minFlavorPrice = flavorPrices.length > 0 ? Math.min(...flavorPrices) : 0;
-  const maxFlavorPrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
 
   return (
     <div className="min-h-screen">
@@ -60,17 +58,20 @@ function BuildBoxPage() {
             <div className="py-20 text-center text-sm text-muted-foreground">No build-your-own boxes available yet.</div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-              {boxes.map((b) => (
-                <BoxCard
-                  key={b.id}
-                  box={b}
-                  locale={locale}
-                  t={t}
-                  minFlavorPrice={minFlavorPrice}
-                  maxFlavorPrice={maxFlavorPrice}
-                  flavorsLoading={isFlavorsLoading}
-                />
-              ))}
+              {boxes.map((b) => {
+                const priceRange = byoPrices[b.id] ?? defaultRange;
+                return (
+                  <BoxCard
+                    key={b.id}
+                    box={b}
+                    locale={locale}
+                    t={t}
+                    minFlavorPrice={priceRange.min}
+                    maxFlavorPrice={priceRange.max}
+                    flavorsLoading={pricesLoading}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
