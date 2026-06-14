@@ -96,7 +96,8 @@ function BoxCard({
   startingPrice: number;
 }) {
   const isByo = b.type === "byo";
-  const displayPrice = isByo ? startingPrice : b.price;
+  // If flavor_box_prices has no entries, startingPrice will be 0 — fall back to b.price
+  const displayPrice = isByo ? (startingPrice > 0 ? startingPrice : b.price) : b.price;
 
   return (
     <Link

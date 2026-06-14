@@ -401,9 +401,10 @@ function BoxCard({
   const isByo = b.type === "byo";
 
   // For BYO boxes: compute starting price from lowest flavor price × cookie count
+  // If flavor_box_prices has no entries (lowestFlavorPrice = 0), fall back to b.price
   const lowestFlavorPrice = isByo ? (priceRanges[b.id]?.min ?? 0) : 0;
   const displayPrice = isByo
-    ? (lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0)
+    ? (lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : b.price)
     : b.price;
 
   return (

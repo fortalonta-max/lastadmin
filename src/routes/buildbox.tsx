@@ -138,14 +138,18 @@ function BoxCard({
         {/* Price — always visible on all screen sizes */}
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
           <div>
-            {startingPrice > 0 && (
-              <p className="font-display text-sm sm:text-xl">
-                <span className="block text-[10px] font-normal text-muted-foreground sm:text-xs">
-                  {t("box.starting_from")}
-                </span>
-                {formatCurrency(startingPrice)}
-              </p>
-            )}
+            {/* If flavor_box_prices has no entries, fall back to b.price */}
+            {(() => {
+              const displayPrice = startingPrice > 0 ? startingPrice : b.price;
+              return displayPrice > 0 ? (
+                <p className="font-display text-sm sm:text-xl">
+                  <span className="block text-[10px] font-normal text-muted-foreground sm:text-xs">
+                    {t("box.starting_from")}
+                  </span>
+                  {formatCurrency(displayPrice)}
+                </p>
+              ) : null;
+            })()}
           </div>
           <span className="shrink-0 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-3 sm:py-1.5 sm:text-xs">
             {t("cta.build")} →
