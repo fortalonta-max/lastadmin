@@ -95,6 +95,21 @@ function FlavorsAdmin() {
       if (error) { toast.error(error.message); return; }
     }
 
+    // Recompute box.price for every BYO box whose flavor_box_prices changed
+    const affectedByoBoxIds = Object.keys(boxPrices).filter((id) =>
+      byoBoxes.some((b) => b.id === id && b.type === "byo")
+    );
+    for (const boxId of affectedByoBoxIds) {
+      const box = byoBoxes.find((b) => b.id === boxId)!;
+      const { data: allFbp } = await supabase
+        .from("flavor_box_prices")
+        .select("price")
+        .eq("box_id", boxId);
+      const prices = (allFbp ?? []).map((r) => Number(r.price)).filter((p) => p > 0);
+      const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+      await supabase.from("boxes").update({ price: minPrice * box.cookie_count }).eq("id", boxId);
+    }
+
     toast.success("Saved");
     setEditing(null);
     qc.invalidateQueries({ queryKey: ["admin-flavors"] });

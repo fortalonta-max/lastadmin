@@ -173,6 +173,18 @@ function BoxEditor({
           await supabase.from("boxes").update({ price: computedPrice }).eq("id", boxId);
         }
       }
+    } else {
+      // BYO box: cache min flavor price × cookie_count into box.price
+      const { data: fbp } = await supabase
+        .from("flavor_box_prices")
+        .select("price")
+        .eq("box_id", boxId);
+      const prices = (fbp ?? []).map((r) => Number(r.price)).filter((p) => p > 0);
+      const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+      const byoPrice = minPrice * Number(payload.cookie_count);
+      if (byoPrice > 0) {
+        await supabase.from("boxes").update({ price: byoPrice }).eq("id", boxId);
+      }
     }
     toast.success("Saved");
     onSaved();

@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
-import { fetchBoxes, fetchByoPriceRangePerBox, fetchDefaultFlavorPriceRange, localizedName, localizedDesc, type Box } from "@/lib/storefront";
+import { fetchBoxes, localizedName, localizedDesc, type Box } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/buildbox")({
@@ -22,9 +22,6 @@ export const Route = createFileRoute("/buildbox")({
 function BuildBoxPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: byoPrices = {}, isLoading: isPricesLoading } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
-  const { data: defaultRange = { min: 0, max: 0 }, isLoading: isRangeLoading } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
-  const pricesLoading = isPricesLoading || isRangeLoading;
 
   const boxes = allBoxes.filter((b) => b.type === "byo");
 
@@ -58,20 +55,14 @@ function BuildBoxPage() {
             <div className="py-20 text-center text-sm text-muted-foreground">No build-your-own boxes available yet.</div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-              {boxes.map((b) => {
-                const priceRange = byoPrices[b.id] ?? defaultRange;
-                return (
-                  <BoxCard
-                    key={b.id}
-                    box={b}
-                    locale={locale}
-                    t={t}
-                    minFlavorPrice={priceRange.min}
-                    maxFlavorPrice={priceRange.max}
-                    flavorsLoading={pricesLoading}
-                  />
-                );
-              })}
+              {boxes.map((b) => (
+                <BoxCard
+                  key={b.id}
+                  box={b}
+                  locale={locale}
+                  t={t}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -85,20 +76,11 @@ function BoxCard({
   box: b,
   locale,
   t,
-  minFlavorPrice,
-  maxFlavorPrice,
-  flavorsLoading,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
-  minFlavorPrice: number;
-  maxFlavorPrice: number;
-  flavorsLoading?: boolean;
 }) {
-  const startingPrice = minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
-  const comparePrice =
-    b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;
 
   return (
     <Link
@@ -134,22 +116,13 @@ function BoxCard({
         )}
         <div className="mt-2 flex items-center justify-between sm:mt-4">
           <div>
-            {startingPrice !== null ? (
-              <>
-                {comparePrice !== null && (
-                  <p className="text-sm font-bold text-destructive line-through sm:text-base">
-                    {formatCurrency(comparePrice)}
-                  </p>
-                )}
-                <p className="font-display text-base sm:text-2xl">
-                  <span className="text-xs font-normal text-muted-foreground sm:text-sm">
-                    {t("box.starting_from")}{" "}
-                  </span>
-                  {formatCurrency(startingPrice)}
-                </p>
-              </>
-            ) : flavorsLoading ? (
-              <div className="h-5 w-20 animate-pulse rounded bg-muted" />
+            {b.price > 0 ? (
+              <p className="font-display text-base sm:text-2xl">
+                <span className="text-xs font-normal text-muted-foreground sm:text-sm">
+                  {t("box.starting_from")}{" "}
+                </span>
+                {formatCurrency(b.price)}
+              </p>
             ) : null}
           </div>
           <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">

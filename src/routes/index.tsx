@@ -7,8 +7,6 @@ import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchBoxes,
-  fetchByoPriceRangePerBox,
-  fetchDefaultFlavorPriceRange,
   fetchSettings,
   localizedName,
   localizedDesc,
@@ -209,9 +207,6 @@ function Hero() {
 function BestSellers() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: byoPrices = {}, isLoading: isPriceLoading } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
-  const { data: defaultRange = { min: 0, max: 0 }, isLoading: isRangeLoading } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
-  const pricesLoading = isPriceLoading || isRangeLoading;
 
   const best = boxes.filter((b) => b.is_best_seller);
   if (best.length === 0) return null;
@@ -228,9 +223,6 @@ function BestSellers() {
             t={t}
             badge={t("box.best_seller")}
             badgeVariant="pink"
-            byoPrices={byoPrices}
-            defaultRange={defaultRange}
-            pricesLoading={pricesLoading}
           />
         ))}
       </div>
@@ -243,9 +235,6 @@ function BestSellers() {
 function OurProducts() {
   const { t, locale } = useI18n();
   const { data: boxes = [] } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: byoPrices = {}, isLoading: isPriceLoading } = useQuery({ queryKey: ["byo-price-range"], queryFn: fetchByoPriceRangePerBox });
-  const { data: defaultRange = { min: 0, max: 0 }, isLoading: isRangeLoading } = useQuery({ queryKey: ["default-flavor-range"], queryFn: fetchDefaultFlavorPriceRange });
-  const pricesLoading = isPriceLoading || isRangeLoading;
 
   if (boxes.length === 0) return null;
 
@@ -268,9 +257,6 @@ function OurProducts() {
                   : t("box.byo")
               }
               badgeVariant={b.is_best_seller ? "pink" : b.type === "fixed" ? "gold" : "blue"}
-              byoPrices={byoPrices}
-              defaultRange={defaultRange}
-              pricesLoading={pricesLoading}
             />
           ))}
         </div>
@@ -403,26 +389,14 @@ function BoxCard({
   t,
   badge,
   badgeVariant,
-  byoPrices,
-  defaultRange,
-  pricesLoading,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
   badge?: string;
   badgeVariant?: "pink" | "blue" | "gold";
-  byoPrices: Record<string, { min: number; max: number }>;
-  defaultRange: { min: number; max: number };
-  pricesLoading?: boolean;
 }) {
   const isByo = b.type === "byo";
-  const priceRange = byoPrices[b.id] ?? defaultRange;
-  const minFlavorPrice = priceRange.min;
-  const maxFlavorPrice = priceRange.max;
-  const startingPrice = isByo && minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
-  const comparePrice =
-    isByo && b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;
 
   return (
     <Link
@@ -459,24 +433,15 @@ function BoxCard({
         )}
         <div className="mt-auto flex items-end justify-between pt-2 sm:pt-4">
           <div>
-            {isByo && startingPrice !== null ? (
-              <>
-                {comparePrice !== null && (
-                  <p className="text-sm font-bold text-destructive line-through sm:text-base">
-                    {formatCurrency(comparePrice)}
-                  </p>
-                )}
-                <p className="font-display text-base sm:text-2xl">
+            {b.price > 0 ? (
+              <p className="font-display text-base sm:text-2xl">
+                {isByo && (
                   <span className="hidden sm:inline text-sm font-normal text-muted-foreground">
                     {t("box.starting_from")}{" "}
                   </span>
-                  {formatCurrency(startingPrice)}
-                </p>
-              </>
-            ) : !isByo ? (
-              <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
-            ) : pricesLoading ? (
-              <div className="h-5 w-20 animate-pulse rounded bg-muted" />
+                )}
+                {formatCurrency(b.price)}
+              </p>
             ) : null}
           </div>
           <span

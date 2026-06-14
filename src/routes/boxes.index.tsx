@@ -6,8 +6,6 @@ import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchBoxes,
-  fetchByoPriceRangePerBox,
-  fetchDefaultFlavorPriceRange,
   localizedName,
   localizedDesc,
   type Box,
@@ -29,15 +27,6 @@ export const Route = createFileRoute("/boxes/")({
 function BoxesPage() {
   const { t, locale } = useI18n();
   const { data: allBoxes = [], isLoading } = useQuery({ queryKey: ["boxes"], queryFn: fetchBoxes });
-  const { data: byoPrices = {}, isLoading: isPriceLoading } = useQuery({
-    queryKey: ["byo-price-range"],
-    queryFn: fetchByoPriceRangePerBox,
-  });
-  const { data: defaultRange = { min: 0, max: 0 }, isLoading: isRangeLoading } = useQuery({
-    queryKey: ["default-flavor-range"],
-    queryFn: fetchDefaultFlavorPriceRange,
-  });
-  const pricesLoading = isPriceLoading || isRangeLoading;
 
   return (
     <div className="min-h-screen">
@@ -74,9 +63,6 @@ function BoxesPage() {
                   box={b}
                   locale={locale}
                   t={t}
-                  byoPrices={byoPrices}
-                  defaultRange={defaultRange}
-                  pricesLoading={pricesLoading}
                 />
               ))}
             </div>
@@ -92,27 +78,12 @@ function BoxCard({
   box: b,
   locale,
   t,
-  byoPrices,
-  defaultRange,
-  pricesLoading,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
-  byoPrices: Record<string, { min: number; max: number }>;
-  defaultRange: { min: number; max: number };
-  pricesLoading?: boolean;
 }) {
   const isByo = b.type === "byo";
-
-  // Per-box price range → fallback to global default flavor range
-  const priceRange = byoPrices[b.id] ?? defaultRange;
-  const minFlavorPrice = priceRange.min;
-  const maxFlavorPrice = priceRange.max;
-
-  const startingPrice = isByo && minFlavorPrice > 0 ? minFlavorPrice * b.cookie_count : null;
-  const comparePrice =
-    isByo && b.sale_enabled && maxFlavorPrice > 0 ? maxFlavorPrice * b.cookie_count : null;
 
   return (
     <Link
@@ -150,24 +121,15 @@ function BoxCard({
         )}
         <div className="mt-2 flex items-center justify-between sm:mt-4">
           <div>
-            {isByo && startingPrice !== null ? (
-              <>
-                {comparePrice !== null && (
-                  <p className="text-sm font-bold text-destructive line-through sm:text-base">
-                    {formatCurrency(comparePrice)}
-                  </p>
-                )}
-                <p className="font-display text-base sm:text-2xl">
+            {b.price > 0 ? (
+              <p className="font-display text-base sm:text-2xl">
+                {isByo && (
                   <span className="hidden sm:inline text-sm font-normal text-muted-foreground">
                     {t("box.starting_from")}{" "}
                   </span>
-                  {formatCurrency(startingPrice)}
-                </p>
-              </>
-            ) : !isByo ? (
-              <p className="font-display text-base sm:text-2xl">{formatCurrency(b.price)}</p>
-            ) : pricesLoading ? (
-              <div className="h-5 w-20 animate-pulse rounded bg-muted" />
+                )}
+                {formatCurrency(b.price)}
+              </p>
             ) : null}
           </div>
           <span className="rounded-full bg-[var(--pink)] px-2 py-1 text-[10px] font-semibold text-ink transition-transform group-hover:translate-x-0.5 sm:px-4 sm:py-2 sm:text-xs">
