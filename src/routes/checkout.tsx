@@ -59,6 +59,11 @@ function toISODate(d: Date): string {
  *
  * Uses year/month/day component comparison (not string comparison) to avoid
  * timezone offset edge cases on mobile browsers (especially iOS Safari).
+ *
+ * Cutoff is computed in minutes-of-day to avoid midnight rollover: when
+ * now + MIN_ADVANCE_HOURS crosses into the next calendar day, using
+ * cutoff.getHours() would wrap back to 0–2, making cutoffMinutes tiny and
+ * causing ALL delivery slots (13:00–21:00) to pass the filter incorrectly.
  */
 function availableSlotsForDate(date: Date): string[] {
   const now = new Date();
@@ -70,9 +75,14 @@ function availableSlotsForDate(date: Date): string[] {
 
   if (!isToday) return [...ALL_SLOTS];
 
-  // Same-day: slot start must be >= now + MIN_ADVANCE_HOURS
-  const cutoff = new Date(now.getTime() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
-  const cutoffMinutes = cutoff.getHours() * 60 + cutoff.getMinutes();
+  // Same-day: slot start must be >= now + MIN_ADVANCE_HOURS.
+  // Use minutes-of-day arithmetic to avoid midnight rollover (no new Date needed).
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const cutoffMinutes = nowMinutes + MIN_ADVANCE_HOURS * 60;
+
+  // If cutoff exceeds 24:00 (1440 min), all delivery slots (13:00–21:00)
+  // are already in the past — no same-day availability.
+  if (cutoffMinutes >= 24 * 60) return [];
 
   return ALL_SLOTS.filter((slot) => {
     const [h, m] = slot.split(":").map(Number);
