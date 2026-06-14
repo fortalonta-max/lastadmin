@@ -50,19 +50,25 @@ function BoxDetail() {
     enabled: !!box?.id,
   });
 
-  // Resolved price per flavor:
-  // 1. Use box-specific price from flavor_box_prices if it exists
-  // 2. Fall back to the flavor's own price field (f.price)
-  // 3. Final fallback: 0
-  // This fixes the bug where prices show as zero when flavor_box_prices
-  // has no entry for a flavor — now the flavor's base price is used instead.
+  // Resolved price per flavor — three-level fallback:
+  // 1. flavor_box_prices[flavor_id]  — box-specific per-flavor override (most precise)
+  // 2. flavors.price                 — flavor's own base price (if > 0)
+  // 3. box.price / cookie_count      — even split of the box total price per cookie
+  //    This guarantees a non-zero price as long as the box itself has a price set,
+  //    which fixes the case where flavor_box_prices and flavors.price are both empty/zero.
   const resolvedFlavorPrices = useMemo<Record<string, number>>(() => {
+    const perCookieFallback =
+      box && box.cookie_count > 0 && box.price > 0
+        ? box.price / box.cookie_count
+        : 0;
     const map: Record<string, number> = {};
     flavors.forEach((f) => {
-      map[f.id] = boxFlavorPrices[f.id] ?? Number(f.price) ?? 0;
+      const boxSpecific = boxFlavorPrices[f.id];
+      const flavorBase = Number(f.price) > 0 ? Number(f.price) : undefined;
+      map[f.id] = boxSpecific ?? flavorBase ?? perCookieFallback;
     });
     return map;
-  }, [flavors, boxFlavorPrices]);
+  }, [flavors, boxFlavorPrices, box]);
 
   const [selection, setSelection] = useState<Record<string, number>>({});
 
