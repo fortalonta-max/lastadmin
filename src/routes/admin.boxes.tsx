@@ -73,7 +73,7 @@ function BoxesAdmin() {
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{b.name_en}</p>
               <p className="text-xs text-muted-foreground">
-                {b.cookie_count} cookies · {formatCurrency(Number(b.price))} · {b.type.toUpperCase()}
+                {b.cookie_count} cookies · {b.type === "byo" ? "price from flavors" : formatCurrency(Number(b.price))} · {b.type.toUpperCase()}
               </p>
               <div className="mt-1 flex gap-1 text-[10px]">
                 {!b.is_active && <span className="rounded bg-muted px-1.5">hidden</span>}
@@ -110,7 +110,7 @@ function BoxEditor({
   const { data: flavors = [] } = useQuery({
     queryKey: ["admin-flavors-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("flavors").select("id, name_en").order("sort_order");
+      const { data } = await supabase.from("flavors").select("id, name_en, price").order("sort_order");
       return data ?? [];
     },
   });
@@ -129,6 +129,13 @@ function BoxEditor({
 
   async function save() {
     if (!b.name_en?.trim()) return toast.error("Name (EN) required");
+    const boxType = (b.type ?? "byo") as "fixed" | "byo";
+    // Auto-compute price from fixed flavors; BYO boxes are always 0
+    const flavorMap = Object.fromEntries(flavors.map((f) => [f.id, Number((f as { price?: number }).price ?? 0)]));
+    const autoPrice =
+      boxType === "fixed"
+        ? fixed.filter((x) => x.flavor_id && x.quantity > 0).reduce((sum, x) => sum + (flavorMap[x.flavor_id] ?? 0) * x.quantity, 0)
+        : 0;
     const payload = {
       slug: (b.slug ?? "").trim() || b.name_en.toLowerCase().replace(/\s+/g, "-"),
       name_en: b.name_en.trim(),
@@ -137,8 +144,8 @@ function BoxEditor({
       description_ar: b.description_ar?.trim() || null,
       image_url: b.image_url ?? null,
       cookie_count: Number(b.cookie_count ?? 6),
-      price: Number(b.price ?? 0),
-      type: (b.type ?? "byo") as "fixed" | "byo",
+      price: autoPrice,
+      type: boxType,
       is_active: b.is_active ?? true,
       is_best_seller: b.is_best_seller ?? false,
       sale_enabled: b.sale_enabled ?? false,
@@ -180,9 +187,8 @@ function BoxEditor({
           <Input label="Slug" value={b.slug ?? ""} onChange={(v) => setB({ ...b, slug: v })} placeholder="auto" />
           <Textarea label="Description (EN)" value={b.description_en ?? ""} onChange={(v) => setB({ ...b, description_en: v })} />
           <Textarea label="Description (AR)" value={b.description_ar ?? ""} onChange={(v) => setB({ ...b, description_ar: v })} />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Input label="Cookies" type="number" value={String(b.cookie_count ?? 6)} onChange={(v) => setB({ ...b, cookie_count: Number(v) })} />
-            <Input label="Price" type="number" value={String(b.price ?? 0)} onChange={(v) => setB({ ...b, price: Number(v) })} />
             <label className="block">
               <span className="mb-1 block text-xs font-medium">Type</span>
               <select
@@ -208,9 +214,9 @@ function BoxEditor({
             <div className="rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/5 p-3 text-xs text-muted-foreground">
               <p className="font-semibold text-foreground">Sale price active</p>
               <p className="mt-1">
-                The crossed-out price shown to customers is calculated as:{" "}
-                <strong>highest flavor price × {b.cookie_count ?? "?"} cookies</strong>. The visible sale price is the
-                box's current price field above.
+                The crossed-out (original) price shown to customers is calculated as:{" "}
+                <strong>highest flavor price × {b.cookie_count ?? "?"} cookies</strong>. The sale price is the
+                lowest flavor price × {b.cookie_count ?? "?"} cookies.
               </p>
             </div>
           )}
