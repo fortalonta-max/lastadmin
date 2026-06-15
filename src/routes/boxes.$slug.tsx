@@ -99,7 +99,7 @@ function BoxDetail() {
         content_ids: [box.id],
         content_type: "product",
         value: box.price,
-        currency: "USD",
+        currency: "EGP",
       });
     }
   }, [box]);
@@ -172,7 +172,7 @@ function BoxDetail() {
       content_name: box.name_en,
       content_ids: [box.id],
       value: unitPrice,
-      currency: "USD",
+      currency: "EGP",
     });
 
     toast.success(t("cta.add_to_cart") + " ✓");

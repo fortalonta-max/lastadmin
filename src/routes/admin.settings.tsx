@@ -175,21 +175,28 @@ function SettingsAdmin() {
   const [tgToken,  setTgToken]  = useState("");
   const [tgChatId, setTgChatId] = useState("");
 
+  // Meta CAPI fields — sensitive, stored outside the public SiteSettings type
+  const [capiToken,     setCapiToken]     = useState("");
+  const [testEventCode, setTestEventCode] = useState("");
+
   useEffect(() => {
     if (loaded && !form) setForm({ ...loaded });
   }, [loaded, form]);
 
-  // Load telegram fields directly (they're not in the public SiteSettings type)
+  // Load telegram + CAPI fields directly (they're not in the public SiteSettings type)
   useEffect(() => {
     supabase
       .from("site_settings")
-      .select("telegram_bot_token, telegram_chat_id")
+      .select("telegram_bot_token, telegram_chat_id, meta_capi_token, meta_test_event_code")
       .eq("id", 1)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          setTgToken((data as Record<string,unknown>).telegram_bot_token as string ?? "");
-          setTgChatId((data as Record<string,unknown>).telegram_chat_id  as string ?? "");
+          const r = data as Record<string, unknown>;
+          setTgToken(r.telegram_bot_token as string ?? "");
+          setTgChatId(r.telegram_chat_id  as string ?? "");
+          setCapiToken(r.meta_capi_token  as string ?? "");
+          setTestEventCode(r.meta_test_event_code as string ?? "");
         }
       });
   }, []);
@@ -225,6 +232,8 @@ function SettingsAdmin() {
           contact_phone: form.contact_phone,
           contact_address: form.contact_address,
           meta_pixel_id: form.meta_pixel_id || null,
+          meta_capi_token: capiToken.trim() || null,
+          meta_test_event_code: testEventCode.trim() || null,
           story_heading_en: form.story_heading_en,
           story_heading_ar: form.story_heading_ar,
           story_body_en: form.story_body_en,
@@ -397,6 +406,28 @@ function SettingsAdmin() {
       <Section title="Advanced" description="Optional integrations.">
         <Input label="Meta Pixel ID" value={form.meta_pixel_id ?? ""} onChange={(v) => set("meta_pixel_id", v || null)}
           placeholder="Leave blank to disable" />
+        <label className="block space-y-1">
+          <span className="text-sm font-medium">Meta CAPI Token</span>
+          <p className="text-xs text-muted-foreground">Conversions API access token — enables server-side Purchase event (recommended for higher match quality).</p>
+          <input
+            type="password"
+            value={capiToken}
+            onChange={(e) => setCapiToken(e.target.value)}
+            placeholder="Leave blank to disable CAPI"
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 font-mono text-sm outline-none ring-ring/20 focus:ring-2"
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-sm font-medium">Meta Test Event Code</span>
+          <p className="text-xs text-muted-foreground">Optional — paste the code from Meta Events Manager → Test Events to verify CAPI is working. Remove after testing.</p>
+          <input
+            type="text"
+            value={testEventCode}
+            onChange={(e) => setTestEventCode(e.target.value)}
+            placeholder="e.g. TEST12345"
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 font-mono text-sm outline-none ring-ring/20 focus:ring-2"
+          />
+        </label>
       </Section>
 
       <div className="flex justify-end pb-8">

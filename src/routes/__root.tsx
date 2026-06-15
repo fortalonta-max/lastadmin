@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { I18nProvider } from "@/lib/i18n";
 import { CartProvider } from "@/lib/cart";
 import { MetaPixelLoader } from "@/components/meta-pixel-loader";
+import { trackPixel } from "@/lib/meta-pixel";
 import { Toaster } from "@/components/ui/sonner";
 import { WhatsAppFloatingButton } from "@/components/site-chrome";
 
@@ -122,6 +123,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    return router.subscribe("onResolved", () => {
+      trackPixel("PageView");
+    });
+  }, [router]);
 
   return (
     <QueryClientProvider client={queryClient}>

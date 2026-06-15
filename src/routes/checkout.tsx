@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import { useCart, formatCurrency } from "@/lib/cart";
 import { fetchSettings } from "@/lib/storefront";
 import { placeOrder } from "@/lib/orders.functions";
-import { trackPixel } from "@/lib/meta-pixel";
+import { trackPixel, getPixelCookies } from "@/lib/meta-pixel";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Clock } from "lucide-react";
@@ -185,7 +185,7 @@ function CheckoutPage() {
 
   useEffect(() => {
     if (items.length === 0) return;
-    trackPixel("InitiateCheckout", { value: subtotal, currency: "USD", num_items: items.length });
+    trackPixel("InitiateCheckout", { value: subtotal, currency: "EGP", num_items: items.length });
   }, [items.length, subtotal]);
 
   useEffect(() => {
@@ -255,12 +255,13 @@ function CheckoutPage() {
           meta: {
             event_id: eventId,
             user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+            ...getPixelCookies(),
           },
         },
       });
       trackPixel(
         "Purchase",
-        { value: Number(res.total), currency: "USD", num_items: items.length },
+        { value: Number(res.total), currency: "EGP", num_items: items.length },
         eventId,
       );
 

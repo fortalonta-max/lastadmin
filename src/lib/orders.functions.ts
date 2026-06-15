@@ -269,7 +269,7 @@ async function sendPurchaseToCapi(args: {
       action_source: "website",
       event_id: args.eventId,
       user_data,
-      custom_data: { currency: "USD", value: args.value },
+      custom_data: { currency: "EGP", value: args.value },
     }],
     ...(args.testCode ? { test_event_code: args.testCode } : {}),
   };

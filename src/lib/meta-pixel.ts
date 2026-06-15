@@ -33,10 +33,30 @@ export function initMetaPixel(pixelId: string | null | undefined) {
 
   window.fbq?.("init", pixelId);
   window.fbq?.("track", "PageView");
+
+  // noscript fallback for browsers with JavaScript disabled
+  const noscript = document.createElement("noscript");
+  noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1" />`;
+  document.body.appendChild(noscript);
 }
 
 export function trackPixel(event: string, params?: Record<string, unknown>, eventId?: string) {
   if (typeof window === "undefined" || !window.fbq) return;
   if (eventId) window.fbq("track", event, params ?? {}, { eventID: eventId });
   else window.fbq("track", event, params ?? {});
+}
+
+/** Read _fbp and _fbc cookies set by the Pixel — pass to CAPI for better match quality. */
+export function getPixelCookies(): { fbp?: string; fbc?: string } {
+  if (typeof document === "undefined") return {};
+  const cookies = Object.fromEntries(
+    document.cookie.split("; ").filter(Boolean).map((c) => {
+      const idx = c.indexOf("=");
+      return [c.slice(0, idx), c.slice(idx + 1)];
+    }),
+  );
+  return {
+    fbp: cookies["_fbp"] ?? undefined,
+    fbc: cookies["_fbc"] ?? undefined,
+  };
 }
