@@ -53,35 +53,32 @@ function toISODate(d: Date): string {
 }
 
 /**
- * Returns the available slots for a given date.
- * For today: only slots at least MIN_ADVANCE_HOURS ahead of now.
- * For future dates: all slots.
+ * Returns the available delivery slots.
  *
- * Uses year/month/day component comparison (not string comparison) to avoid
- * timezone offset edge cases on mobile browsers (especially iOS Safari).
+ * @param isToday - Pass `true` when the selected date IS today (derived from
+ *   `dateOption === "today"` at the call site). Passing an explicit boolean
+ *   avoids comparing two Date objects, which is unreliable on mobile browsers
+ *   (iOS Safari and Android Chrome can yield inconsistent getDate() results
+ *   when SSR-hydrated dates are involved).
  *
- * Cutoff is computed in minutes-of-day to avoid midnight rollover: when
- * now + MIN_ADVANCE_HOURS crosses into the next calendar day, using
- * cutoff.getHours() would wrap back to 0–2, making cutoffMinutes tiny and
- * causing ALL delivery slots (13:00–21:00) to pass the filter incorrectly.
+ * When isToday is true, only slots at least MIN_ADVANCE_HOURS ahead of now
+ * are returned. Cutoff uses minutes-of-day arithmetic to prevent midnight
+ * rollover: after 21:00 local time, now + 3h > 24:00, so cutoffMinutes would
+ * wrap back to 0–120 and incorrectly pass all slots — the >= 1440 guard
+ * prevents that.
+ *
+ * When isToday is false (future date), all slots are returned.
  */
-function availableSlotsForDate(date: Date): string[] {
-  const now = new Date();
-
-  const isToday =
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate();
-
+function availableSlotsForDate(isToday: boolean): string[] {
   if (!isToday) return [...ALL_SLOTS];
 
-  // Same-day: slot start must be >= now + MIN_ADVANCE_HOURS.
-  // Use minutes-of-day arithmetic to avoid midnight rollover (no new Date needed).
+  const now = new Date();
+
+  // Minutes-of-day arithmetic — no Date object wrapping required.
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const cutoffMinutes = nowMinutes + MIN_ADVANCE_HOURS * 60;
 
-  // If cutoff exceeds 24:00 (1440 min), all delivery slots (13:00–21:00)
-  // are already in the past — no same-day availability.
+  // Cutoff crossed midnight: all delivery slots (13:00–21:00) are in the past.
   if (cutoffMinutes >= 24 * 60) return [];
 
   return ALL_SLOTS.filter((slot) => {
@@ -163,17 +160,17 @@ function CheckoutPage() {
   const blockedTodaySet = new Set(blockedToday);
 
   const noSlotsToday =
-    availableSlotsForDate(new Date()).filter((s) => !blockedTodaySet.has(s)).length === 0;
+    availableSlotsForDate(true).filter((s) => !blockedTodaySet.has(s)).length === 0;
   const availableSlots = selectedDate
-    ? availableSlotsForDate(selectedDate).filter((s) => !blockedForSelectedSet.has(s))
+    ? availableSlotsForDate(dateOption === "today").filter((s) => !blockedForSelectedSet.has(s))
     : [];
 
   // When date changes (or blocked slots load), reset time if it's no longer valid
   useEffect(() => {
     if (!selectedDate) { setSelectedTime(""); return; }
-    const slots = availableSlotsForDate(selectedDate).filter((s) => !blockedForSelectedSet.has(s));
+    const slots = availableSlotsForDate(dateOption === "today").filter((s) => !blockedForSelectedSet.has(s));
     if (selectedTime && !slots.includes(selectedTime)) setSelectedTime("");
-  }, [selectedDate, blockedForSelected]);
+  }, [dateOption, selectedDate, blockedForSelected]);
 
   function handleDateOption(opt: DateOption) {
     setDateOption(opt);
