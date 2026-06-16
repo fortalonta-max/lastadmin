@@ -82,7 +82,8 @@ export async function notifyNewOrder(
     `  NEW ORDER #${order.order_number}`,
     "==============================",
     `Name:    ${order.customer_name}`,
-    `Phone:   ${order.customer_phone}`,
+	`Phone:   ${order.customer_phone}`,
+    `Whatsapp: https://wa.me/2${order.customer_phone}`,
     `Address: ${order.customer_address}`,
   ];
   if (order.notes) lines.push(`Notes:   ${order.notes}`);

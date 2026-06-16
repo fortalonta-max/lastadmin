@@ -343,12 +343,12 @@ function UtmPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/40 text-xs text-muted-foreground">
-                  <th className="px-6 py-3 text-right font-medium">{t("admin.utm.col_source")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_medium")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_campaign")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_orders")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_revenue")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_avg")}</th>
+                  <th className="w-28 px-6 py-3 text-start font-medium">{t("admin.utm.col_source")}</th>
+                  <th className="w-28 px-4 py-3 text-start font-medium">{t("admin.utm.col_medium")}</th>
+                  <th className="px-4 py-3 text-start font-medium">{t("admin.utm.col_campaign")}</th>
+                  <th className="w-20 px-4 py-3 text-start font-medium">{t("admin.utm.col_orders")}</th>
+                  <th className="w-28 px-4 py-3 text-start font-medium">{t("admin.utm.col_revenue")}</th>
+                  <th className="w-28 px-4 py-3 text-start font-medium">{t("admin.utm.col_avg")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -423,13 +423,13 @@ function UtmPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/40 text-xs text-muted-foreground">
-                  <th className="px-6 py-3 text-right font-medium">#</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_date")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_source")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_medium")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_campaign")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_content")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("admin.utm.col_total")}</th>
+                  <th className="w-14 px-6 py-3 text-start font-medium">#</th>
+                  <th className="w-20 px-4 py-3 text-start font-medium">{t("admin.utm.col_date")}</th>
+                  <th className="w-28 px-4 py-3 text-start font-medium">{t("admin.utm.col_source")}</th>
+                  <th className="w-28 px-4 py-3 text-start font-medium">{t("admin.utm.col_medium")}</th>
+                  <th className="px-4 py-3 text-start font-medium">{t("admin.utm.col_campaign")}</th>
+                  <th className="w-28 px-4 py-3 text-start font-medium">{t("admin.utm.col_content")}</th>
+                  <th className="w-28 px-4 py-3 text-start font-medium">{t("admin.utm.col_total")}</th>
                 </tr>
               </thead>
               <tbody>
