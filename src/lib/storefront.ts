@@ -34,14 +34,10 @@ export type Box = {
   cookie_count: number;
   /**
    * Legacy cache field — kept for backward compatibility.
-   * All pricing is now derived from flavor default prices (flavors.price) minus box discount.
+   * Live pricing is derived from flavor default prices (flavors.price) minus per-flavor discounts
+   * stored in flavor_box_prices.discount.
    */
   price: number;
-  /**
-   * Fixed EGP discount subtracted from the sum of selected flavors' default prices.
-   * Set to 0 for no discount (e.g. box type 4 behaviour).
-   */
-  discount: number;
   type: "fixed" | "byo";
   is_active: boolean;
   is_best_seller: boolean;
@@ -211,20 +207,30 @@ export async function fetchFlavors() {
 }
 
 /**
- * Fetch per-cookie prices for every flavor.
- * New pricing system: uses flavors.default price (flavors.price) — universal across all boxes.
- * The boxId parameter is kept for API compatibility but is no longer used.
- * Returns a map of flavor_id → price-per-cookie.
+ * Fetch effective per-cookie prices for every flavor in the context of a specific box.
+ * Effective price = MAX(0, flavors.price − flavor_box_prices.discount).
+ * If no discount row exists for a flavor+box pair the full flavors.price is used.
+ * Returns a map of flavor_id → effective-price-per-cookie (flavors with price 0 are omitted).
  */
-export async function fetchFlavorPricesForBox(_boxId: string): Promise<Record<string, number>> {
-  const { data, error } = await supabase
-    .from("flavors")
-    .select("id, price");
-  if (error) throw error;
+export async function fetchFlavorPricesForBox(boxId: string): Promise<Record<string, number>> {
+  const [flavorsRes, discountsRes] = await Promise.all([
+    supabase.from("flavors").select("id, price").eq("is_available", true),
+    supabase.from("flavor_box_prices").select("flavor_id, discount").eq("box_id", boxId),
+  ]);
+  if (flavorsRes.error) throw flavorsRes.error;
+
+  // Build discount lookup: flavor_id → discount amount for this box
+  const discountMap: Record<string, number> = {};
+  for (const row of discountsRes.data ?? []) {
+    discountMap[row.flavor_id] = Number(row.discount ?? 0);
+  }
+
   const map: Record<string, number> = {};
-  for (const row of data ?? []) {
-    const price = Number(row.price ?? 0);
-    if (price > 0) map[row.id] = price;
+  for (const f of flavorsRes.data ?? []) {
+    const base = Number(f.price ?? 0);
+    if (base <= 0) continue;
+    const discount = discountMap[f.id] ?? 0;
+    map[f.id] = Math.max(0, base - discount);
   }
   return map;
 }
@@ -239,7 +245,6 @@ export async function fetchBoxes() {
   return (data ?? []).map((b) => ({
     ...b,
     price: Number(b.price),
-    discount: Number(b.discount ?? 0),
   })) as Box[];
 }
 
@@ -255,7 +260,6 @@ export async function fetchBoxBySlug(slug: string) {
   return {
     ...data,
     price: Number(data.price),
-    discount: Number((data as any).discount ?? 0),
   } as Box & {
     box_fixed_flavors: Array<{ quantity: number; flavor_id: string; flavors: Flavor }>;
   };

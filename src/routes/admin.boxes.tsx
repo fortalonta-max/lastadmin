@@ -22,8 +22,6 @@ type Box = {
   image_url: string | null;
   cookie_count: number;
   price: number;
-  /** Fixed EGP discount subtracted from the sum of selected flavors' default prices. 0 = no discount. */
-  discount: number;
   type: "fixed" | "byo";
   is_active: boolean;
   is_best_seller: boolean;
@@ -58,7 +56,7 @@ function BoxesAdmin() {
         <h1 className="font-display text-3xl">Boxes</h1>
         <button
           onClick={() =>
-            setEditing({ type: "byo", is_active: true, cookie_count: 6, price: 0, discount: 0, sale_enabled: false, sort_order: boxes.length + 1 })
+            setEditing({ type: "byo", is_active: true, cookie_count: 6, price: 0, sale_enabled: false, sort_order: boxes.length + 1 })
           }
           className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
         >
@@ -124,10 +122,32 @@ function BoxEditor({
       return data ?? [];
     },
   });
+  const { data: existingDiscounts = [] } = useQuery({
+    queryKey: ["admin-box-flavor-discounts", box.id],
+    enabled: !!box.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("flavor_box_prices")
+        .select("flavor_id, discount")
+        .eq("box_id", box.id!);
+      return data ?? [];
+    },
+  });
   const [fixed, setFixed] = useState<FixedFlavor[]>([]);
+  // Per-flavor discounts for this box: flavor_id → discount amount
+  const [flavorDiscounts, setFlavorDiscounts] = useState<Record<string, number>>({});
+
   useEffect(() => {
     if (existingFixed.length) setFixed(existingFixed as FixedFlavor[]);
   }, [existingFixed]);
+
+  useEffect(() => {
+    if (existingDiscounts.length) {
+      const map: Record<string, number> = {};
+      existingDiscounts.forEach((r) => { map[r.flavor_id] = Number(r.discount ?? 0); });
+      setFlavorDiscounts(map);
+    }
+  }, [existingDiscounts]);
 
   async function save() {
     if (!b.name_en?.trim()) return toast.error("Name (EN) required");
@@ -141,8 +161,6 @@ function BoxEditor({
       image_url: b.image_url ?? null,
       cookie_count: Number(b.cookie_count ?? 6),
       price: 0,
-      // New: fixed EGP discount subtracted from the flavor price sum at order time
-      discount: Math.max(0, Number(b.discount ?? 0)),
       type: boxType,
       is_active: b.is_active ?? true,
       is_best_seller: b.is_best_seller ?? false,
@@ -155,6 +173,7 @@ function BoxEditor({
     if (res.error) return toast.error(res.error.message);
     const boxId = res.data.id;
 
+    // Save fixed-box flavor list
     if (payload.type === "fixed") {
       await supabase.from("box_fixed_flavors").delete().eq("box_id", boxId);
       const validFixed = fixed.filter((x) => x.flavor_id && x.quantity > 0);
@@ -164,6 +183,25 @@ function BoxEditor({
         if (error) return toast.error(error.message);
       }
     }
+
+    // Save per-flavor discounts: upsert rows with discount > 0; delete rows where discount was cleared to 0
+    const discountEntries = Object.entries(flavorDiscounts);
+    if (discountEntries.length > 0) {
+      // Delete all existing discount rows for this box, then re-insert only the ones with a value
+      await supabase.from("flavor_box_prices").delete().eq("box_id", boxId);
+      const nonZero = discountEntries.filter(([, d]) => d > 0);
+      if (nonZero.length > 0) {
+        const discountRows = nonZero.map(([flavor_id, discount]) => ({
+          box_id: boxId,
+          flavor_id,
+          price: 0,
+          discount,
+        }));
+        const { error } = await supabase.from("flavor_box_prices").insert(discountRows);
+        if (error) return toast.error(error.message);
+      }
+    }
+
     toast.success("Saved");
     onSaved();
     onClose();
@@ -196,19 +234,46 @@ function BoxEditor({
               </select>
             </label>
           </div>
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
-            <Input
-              label="Fixed discount (EGP)"
-              type="number"
-              value={String(b.discount ?? 0)}
-              onChange={(v) => setB({ ...b, discount: Number(v) })}
-              placeholder="0"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Amount subtracted from the sum of selected flavors' default prices.
-              Set to <strong>0</strong> for no discount (price = sum of flavors only).
-            </p>
-          </div>
+          {flavors.length > 0 && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+              <p className="text-xs font-semibold">Per-flavor discounts (EGP) for this box</p>
+              <p className="text-[11px] text-muted-foreground">
+                Set a discount per flavor. Effective price = flavor's default price − discount.
+                Leave at <strong>0</strong> to use the default price with no discount.
+              </p>
+              <div className="space-y-1.5 pt-1">
+                {flavors.map((f) => (
+                  <div key={f.id} className="flex items-center gap-3">
+                    <span className="flex-1 text-xs">
+                      {f.name_en}
+                      <span className="ml-1.5 text-muted-foreground">
+                        ({f.price > 0 ? `EGP ${f.price}` : "no base price"})
+                      </span>
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                      value={flavorDiscounts[f.id] ?? ""}
+                      onChange={(e) =>
+                        setFlavorDiscounts((prev) => ({
+                          ...prev,
+                          [f.id]: Math.max(0, Number(e.target.value)),
+                        }))
+                      }
+                      className="w-24 rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+                    />
+                    {(flavorDiscounts[f.id] ?? 0) > 0 && f.price > 0 && (
+                      <span className="w-20 text-right text-xs text-emerald-600 dark:text-emerald-400">
+                        → EGP {Math.max(0, f.price - (flavorDiscounts[f.id] ?? 0))}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <Input label="Sort order" type="number" value={String(b.sort_order ?? 0)} onChange={(v) => setB({ ...b, sort_order: Number(v) })} />
           <div className="grid grid-cols-2 gap-2 text-sm">
             <Toggle label="Active" checked={b.is_active ?? true} onChange={(v) => setB({ ...b, is_active: v })} />

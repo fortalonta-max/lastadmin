@@ -61,7 +61,7 @@ export const placeOrder = createServerFn({ method: "POST" })
     const boxIds = [...new Set(data.items.map((i) => i.box_id))];
     const { data: boxes, error: boxErr } = await supabaseAdmin
       .from("boxes")
-      .select("id, price, discount, cookie_count, name_en, type, is_active")
+      .select("id, price, cookie_count, name_en, type, is_active")
       .in("id", boxIds);
     if (boxErr) throw new Error(boxErr.message);
 
@@ -73,16 +73,39 @@ export const placeOrder = createServerFn({ method: "POST" })
       item.selected_flavors.forEach((f) => allFlavorIds.add(f.flavor_id));
     }
 
-    // Fetch all referenced flavors' default prices in one query
+    // Fetch flavor base prices and per-box-per-flavor discounts in parallel
     const flavorPriceMap = new Map<string, number>();
+    // Key: "box_id:flavor_id" → discount amount
+    const fbpDiscountMap = new Map<string, number>();
+
+    const fetchPromises: Promise<void>[] = [];
+
     if (allFlavorIds.size > 0) {
-      const { data: flavorRows, error: flavorErr } = await supabaseAdmin
-        .from("flavors")
-        .select("id, price")
-        .in("id", [...allFlavorIds]);
-      if (flavorErr) throw new Error(flavorErr.message);
-      (flavorRows ?? []).forEach((f) => flavorPriceMap.set(f.id, Number(f.price ?? 0)));
+      fetchPromises.push(
+        supabaseAdmin
+          .from("flavors")
+          .select("id, price")
+          .in("id", [...allFlavorIds])
+          .then(({ data: flavorRows, error: flavorErr }) => {
+            if (flavorErr) throw new Error(flavorErr.message);
+            (flavorRows ?? []).forEach((f) => flavorPriceMap.set(f.id, Number(f.price ?? 0)));
+          }),
+      );
+      fetchPromises.push(
+        supabaseAdmin
+          .from("flavor_box_prices")
+          .select("box_id, flavor_id, discount")
+          .in("box_id", boxIds)
+          .in("flavor_id", [...allFlavorIds])
+          .then(({ data: fbpRows, error: fbpErr }) => {
+            if (fbpErr) throw new Error(fbpErr.message);
+            (fbpRows ?? []).forEach((r) =>
+              fbpDiscountMap.set(`${r.box_id}:${r.flavor_id}`, Number(r.discount ?? 0)),
+            );
+          }),
+      );
     }
+    await Promise.all(fetchPromises);
 
     let subtotal = 0;
     const computedUnitPrices: number[] = [];
@@ -94,18 +117,16 @@ export const placeOrder = createServerFn({ method: "POST" })
         throw new Error(`Please select exactly ${b.cookie_count} cookies for ${b.name_en}.`);
       }
 
-      // New pricing: sum of selected flavors' default prices minus the box fixed discount.
-      // Works for both BYO (customer-selected flavors) and fixed boxes (preset flavors).
-      const flavorTotal = item.selected_flavors.reduce(
-        (sum, f) => sum + (flavorPriceMap.get(f.flavor_id) ?? 0) * f.quantity,
-        0,
-      );
-      const boxDiscount = Number((b as any).discount ?? 0);
-      // If no flavor prices are configured yet, fall back to box.price for backward compat.
-      const unitPrice =
-        flavorTotal > 0
-          ? Math.max(0, flavorTotal - boxDiscount)
-          : Number(b.price);
+      // Pricing: for each selected flavor, apply the per-box discount if one exists.
+      // Effective price per cookie = MAX(0, flavors.price − flavor_box_prices.discount).
+      const flavorTotal = item.selected_flavors.reduce((sum, f) => {
+        const basePrice = flavorPriceMap.get(f.flavor_id) ?? 0;
+        const discount = fbpDiscountMap.get(`${item.box_id}:${f.flavor_id}`) ?? 0;
+        return sum + Math.max(0, basePrice - discount) * f.quantity;
+      }, 0);
+
+      // Fall back to box.price (legacy cache) if no flavor prices are configured yet.
+      const unitPrice = flavorTotal > 0 ? flavorTotal : Number(b.price);
 
       computedUnitPrices.push(unitPrice);
       subtotal += unitPrice * item.quantity;

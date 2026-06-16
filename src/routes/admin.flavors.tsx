@@ -237,8 +237,9 @@ function FlavorEditor({
             placeholder="e.g. 25"
           />
           <div className="rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/5 p-3 text-[11px] text-muted-foreground">
-            <strong className="text-foreground">Pricing note:</strong> This default price applies across all boxes.
-            Each box can have a fixed discount (set on the Box page) subtracted from the total flavor sum.
+            <strong className="text-foreground">Pricing note:</strong> This is the default price per cookie across all boxes.
+            To discount a flavor inside a specific box, open that box in the Boxes admin and set a per-flavor discount there.
+            Effective price = <em>this price − box discount for this flavor</em>.
           </div>
           <Input label="Sort order" type="number" value={String(f.sort_order ?? 0)} onChange={(v) => setF({ ...f, sort_order: Number(v) })} />
           <div className="grid grid-cols-3 gap-2 text-sm">

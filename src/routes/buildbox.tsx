@@ -67,11 +67,9 @@ function BuildBoxPage() {
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {boxes.map((b) => {
                 const lowestFlavorPrice = priceRanges[b.id]?.min ?? 0;
-                // Starting price = lowest flavor price × cookie count − box fixed discount
-                const boxDiscount = Number(b.discount ?? 0);
-                const startingPrice = lowestFlavorPrice > 0
-                  ? Math.max(0, lowestFlavorPrice * b.cookie_count - boxDiscount)
-                  : 0;
+                // Starting price: lowest effective flavor price × cookie count.
+                // Per-flavor discounts are baked into priceRanges via fetchFlavorPricesForBox.
+                const startingPrice = lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0;
                 return (
                   <BoxCard
                     key={b.id}

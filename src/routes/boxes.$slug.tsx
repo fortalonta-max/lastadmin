@@ -111,17 +111,15 @@ function BoxDetail() {
     [selection],
   );
 
-  // Total price of the current BYO selection (sum of flavors' default prices minus box discount)
+  // Total price of the current BYO selection.
+  // resolvedFlavorPrices already contains effective per-box prices (flavor.price − per-flavor discount).
   const byoPrice = useMemo(
-    () => {
-      const flavorTotal = Object.entries(selection).reduce(
+    () =>
+      Object.entries(selection).reduce(
         (total, [flavor_id, qty]) => total + (resolvedFlavorPrices[flavor_id] ?? 0) * qty,
         0,
-      );
-      const boxDiscount = Number(box?.discount ?? 0);
-      return Math.max(0, flavorTotal - boxDiscount);
-    },
-    [selection, resolvedFlavorPrices, box],
+      ),
+    [selection, resolvedFlavorPrices],
   );
 
   // Lowest per-cookie price across all flavors — used for "Starting from …" on BYO boxes.
@@ -130,7 +128,8 @@ function BoxDetail() {
     return prices.length > 0 ? Math.min(...prices) : null;
   }, [resolvedFlavorPrices]);
 
-  // Fixed box price: sum of each preset flavor's default price × quantity, minus box discount.
+  // Fixed box price: sum of each preset flavor's effective price × quantity.
+  // resolvedFlavorPrices already bakes in per-flavor-per-box discounts.
   // Falls back to box.price (legacy cache) if flavor prices are not configured.
   const fixedPrice = useMemo(() => {
     if (!flavorPricesReady || !box?.box_fixed_flavors?.length) return null;
@@ -138,9 +137,7 @@ function BoxDetail() {
       (sum, bf) => sum + (resolvedFlavorPrices[bf.flavor_id] ?? 0) * bf.quantity,
       0,
     );
-    if (flavorTotal <= 0) return null;
-    const boxDiscount = Number(box.discount ?? 0);
-    return Math.max(0, flavorTotal - boxDiscount);
+    return flavorTotal > 0 ? flavorTotal : null;
   }, [box, resolvedFlavorPrices, flavorPricesReady]);
 
   // ── Pixel ────────────────────────────────────────────────────────────────────
@@ -286,7 +283,7 @@ function BoxDetail() {
                 <span className="block text-base font-normal text-muted-foreground">
                   {t("box.starting_from")}
                 </span>
-                {formatCurrency(Math.max(0, minFlavorPrice * cookieCount - Number(box.discount ?? 0)))}
+                {formatCurrency(minFlavorPrice * cookieCount)}
               </>
             ) : null}
           </p>

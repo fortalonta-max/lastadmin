@@ -56,7 +56,6 @@ export type Database = {
           created_at: string
           description_ar: string | null
           description_en: string | null
-          discount: number
           id: string
           image_url: string | null
           is_active: boolean
@@ -74,7 +73,6 @@ export type Database = {
           created_at?: string
           description_ar?: string | null
           description_en?: string | null
-          discount?: number
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -92,7 +90,6 @@ export type Database = {
           created_at?: string
           description_ar?: string | null
           description_en?: string | null
-          discount?: number
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -233,13 +230,16 @@ export type Database = {
           flavor_id: string
           box_id: string
           price: number
+          /** Per-flavor discount for this box: effective price = MAX(0, flavors.price - discount) */
+          discount: number
           created_at: string
         }
         Insert: {
           id?: string
           flavor_id: string
           box_id: string
-          price: number
+          price?: number
+          discount?: number
           created_at?: string
         }
         Update: {
@@ -247,6 +247,7 @@ export type Database = {
           flavor_id?: string
           box_id?: string
           price?: number
+          discount?: number
           created_at?: string
         }
         Relationships: []
