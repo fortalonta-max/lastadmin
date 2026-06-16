@@ -44,7 +44,7 @@ function BoxDetail() {
   });
 
   // Box-specific flavor prices from flavor_box_prices table
-  const { data: boxFlavorPrices = {} } = useQuery({
+  const { data: boxFlavorPrices = {}, isLoading: isFlavorPricesLoading } = useQuery({
     queryKey: ["flavor-box-prices", box?.id],
     queryFn: () => fetchFlavorPricesForBox(box!.id),
     enabled: !!box?.id,
@@ -54,21 +54,27 @@ function BoxDetail() {
   // 1. flavor_box_prices[flavor_id]  — box-specific per-flavor override (most precise)
   // 2. flavors.price                 — flavor's own base price (if > 0)
   // 3. box.price / cookie_count      — even split of the box total price per cookie
-  //    This guarantees a non-zero price as long as the box itself has a price set,
-  //    which fixes the case where flavor_box_prices and flavors.price are both empty/zero.
+  //    Only applied AFTER boxFlavorPrices has finished loading. If applied while the
+  //    query is still in-flight, every flavor with no explicit f.price falls back to
+  //    box.price / cookie_count — the same value for all flavors — which equals the
+  //    minimum flavor price and makes mobile users see the lowest price on every card.
   const resolvedFlavorPrices = useMemo<Record<string, number>>(() => {
     const perCookieFallback =
       box && box.cookie_count > 0 && box.price > 0
         ? box.price / box.cookie_count
         : 0;
+    // Do not apply the per-cookie fallback while the box-flavor-price query is still
+    // loading. Doing so would set every flavor (that has no explicit f.price) to the
+    // same minimum value before the real per-flavor prices arrive.
+    const fallbackWhenUnknown = (box?.id && isFlavorPricesLoading) ? 0 : perCookieFallback;
     const map: Record<string, number> = {};
     flavors.forEach((f) => {
       const boxSpecific = boxFlavorPrices[f.id];
       const flavorBase = Number(f.price) > 0 ? Number(f.price) : undefined;
-      map[f.id] = boxSpecific ?? flavorBase ?? perCookieFallback;
+      map[f.id] = boxSpecific ?? flavorBase ?? fallbackWhenUnknown;
     });
     return map;
-  }, [flavors, boxFlavorPrices, box]);
+  }, [flavors, boxFlavorPrices, box, isFlavorPricesLoading]);
 
   const [selection, setSelection] = useState<Record<string, number>>({});
 
