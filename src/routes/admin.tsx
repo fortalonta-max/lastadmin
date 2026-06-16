@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   Share2,
   CalendarX2,
+  BarChart2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -166,6 +167,7 @@ function AdminShell() {
     { to: "/admin/faqs", label: t("admin.nav.faqs"), icon: HelpCircle },
     { to: "/admin/social", label: t("admin.nav.social"), icon: Share2 },
     { to: "/admin/delivery", label: t("admin.nav.delivery"), icon: CalendarX2 },
+    { to: "/admin/utm", label: t("admin.nav.utm"), icon: BarChart2 },
     { to: "/admin/settings", label: t("admin.nav.settings"), icon: Settings },
   ];
 

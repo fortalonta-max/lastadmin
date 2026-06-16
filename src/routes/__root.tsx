@@ -15,6 +15,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { CartProvider } from "@/lib/cart";
 import { MetaPixelLoader } from "@/components/meta-pixel-loader";
 import { trackPixel } from "@/lib/meta-pixel";
+import { captureUtm } from "@/lib/utm";
 import { Toaster } from "@/components/ui/sonner";
 import { WhatsAppFloatingButton } from "@/components/site-chrome";
 
@@ -126,7 +127,9 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    captureUtm();
     return router.subscribe("onResolved", () => {
+      captureUtm();
       trackPixel("PageView");
     });
   }, [router]);

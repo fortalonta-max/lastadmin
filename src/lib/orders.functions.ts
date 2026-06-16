@@ -36,6 +36,15 @@ const PlaceOrderInput = z.object({
       user_agent: z.string().max(500).optional(),
     })
     .optional(),
+  utm: z
+    .object({
+      utm_source:   z.string().max(200).optional(),
+      utm_medium:   z.string().max(200).optional(),
+      utm_campaign: z.string().max(200).optional(),
+      utm_content:  z.string().max(200).optional(),
+      utm_term:     z.string().max(200).optional(),
+    })
+    .optional(),
 });
 
 export const placeOrder = createServerFn({ method: "POST" })
@@ -162,6 +171,24 @@ export const placeOrder = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (orderErr || !order) throw new Error(orderErr?.message ?? "Failed to create order");
+
+    // Save UTM params — best-effort: silently skipped if migration hasn't been run yet
+    if (data.utm && Object.values(data.utm).some(Boolean)) {
+      try {
+        await supabaseAdmin
+          .from("orders")
+          .update({
+            utm_source:   data.utm.utm_source   ?? null,
+            utm_medium:   data.utm.utm_medium   ?? null,
+            utm_campaign: data.utm.utm_campaign ?? null,
+            utm_content:  data.utm.utm_content  ?? null,
+            utm_term:     data.utm.utm_term     ?? null,
+          })
+          .eq("id", order.id);
+      } catch {
+        // UTM columns not yet in DB — run utm_migration.sql in Supabase to enable
+      }
+    }
 
     const { error: itemsErr } = await supabaseAdmin.from("order_items").insert(
       data.items.map((i, idx) => ({

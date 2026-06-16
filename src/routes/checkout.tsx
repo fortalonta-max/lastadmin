@@ -10,6 +10,7 @@ import { useCart, formatCurrency } from "@/lib/cart";
 import { fetchSettings } from "@/lib/storefront";
 import { placeOrder } from "@/lib/orders.functions";
 import { trackPixel, getPixelCookies } from "@/lib/meta-pixel";
+import { getUtm } from "@/lib/utm";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Clock } from "lucide-react";
@@ -257,6 +258,7 @@ function CheckoutPage() {
             user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
             ...getPixelCookies(),
           },
+          utm: getUtm(),
         },
       });
       trackPixel(
