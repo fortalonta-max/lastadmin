@@ -50,38 +50,53 @@ function BoxDetail() {
   //
   // SINGLE SOURCE OF TRUTH: flavor_box_prices table only.
   //
-  // Design:
-  //   • Each flavor has a different per-cookie price depending on which box it
-  //     is in. A 4-cookie box may charge more per cookie than a 6-cookie box.
-  //   • Prices are stored as rows in flavor_box_prices(box_id, flavor_id, price).
-  //   • flavors.price is a legacy field always set to 0 — never used here.
-  //   • box.price is a derived cache (min_price × cookie_count) used only for
-  //     listing cards — never used as a per-flavor fallback here.
+  // WHY WE USE `status` NOT `isLoading`:
   //
-  // Loading behaviour:
-  //   • While the query is in flight, resolvedFlavorPrices is an empty map {}.
-  //   • The BYO picker hides price tags until the map is populated.
-  //   • This prevents the mobile bug where all flavors showed the same price
-  //     before the real per-flavor prices arrived from the database.
+  //   React Query v5 defines isLoading as:
+  //     status === 'pending' AND fetchStatus === 'fetching'
+  //
+  //   When the box query finishes and `enabled` flips to true, there is a brief
+  //   render frame where the flavor-prices query has:
+  //     status = 'pending'   (fetch not yet run)
+  //     fetchStatus = 'idle' (scheduled, not started)
+  //   → isLoading = FALSE even though no data has arrived yet.
+  //
+  //   During that frame, boxFlavorPrices = {} but box.price is populated.
+  //   Old code fell back to box.price / cookie_count — the same number for
+  //   every flavor — which is the "minimum price shown everywhere" bug.
+  //
+  //   Chrome V8 collapses this frame before painting (concurrent scheduler).
+  //   Firefox SpiderMonkey and Safari JavaScriptCore paint it, so the wrong
+  //   prices were rendered and stuck until the next update.
+  //
+  //   The fix: gate on `status === 'success'`. That flag is only ever true
+  //   after a confirmed, completed fetch — it skips the idle window entirely.
 
-  const { data: boxFlavorPrices = {}, isLoading: isFlavorPricesLoading } = useQuery({
+  const {
+    data: boxFlavorPrices = {},
+    status: flavorPricesStatus,
+  } = useQuery({
     queryKey: ["flavor-box-prices", box?.id],
     queryFn: () => fetchFlavorPricesForBox(box!.id),
     enabled: !!box?.id,
     staleTime: 30_000,
   });
 
+  // True only after the flavor-prices fetch has fully succeeded.
+  // Drives both the price map and all loading skeletons.
+  const flavorPricesReady = flavorPricesStatus === "success";
+
   // Map of flavor_id → per-cookie price for this specific box.
-  // Returns {} while loading — no stale or derived values are ever substituted.
+  // Returns {} until flavorPricesReady — no stale or derived values substituted.
   const resolvedFlavorPrices = useMemo<Record<string, number>>(() => {
-    if (isFlavorPricesLoading) return {};
+    if (!flavorPricesReady) return {};
     const map: Record<string, number> = {};
     for (const f of flavors) {
       const price = Number(boxFlavorPrices[f.id] ?? 0);
       if (price > 0) map[f.id] = price;
     }
     return map;
-  }, [flavors, boxFlavorPrices, isFlavorPricesLoading]);
+  }, [flavors, boxFlavorPrices, flavorPricesReady]);
 
   // ── Selection state ──────────────────────────────────────────────────────────
 
@@ -106,8 +121,8 @@ function BoxDetail() {
     [selection, resolvedFlavorPrices],
   );
 
-  // Minimum per-cookie price across all flavors for this box — used for
-  // "Starting from …" when no flavors have been selected yet.
+  // Lowest per-cookie price across all flavors in this box —
+  // used for "Starting from …" when nothing has been selected yet.
   const minFlavorPrice = useMemo(() => {
     const prices = Object.values(resolvedFlavorPrices).filter((p) => p > 0);
     return prices.length > 0 ? Math.min(...prices) : null;
@@ -241,13 +256,13 @@ function BoxDetail() {
             {isFixed ? (
               formatCurrency(box.price)
             ) : totalSelected > 0 ? (
-              // Customer has made a selection — show the running total
+              // Active selection — show running total
               formatCurrency(byoPrice)
-            ) : isFlavorPricesLoading || isFlavorsLoading ? (
-              // Prices are still loading — show a skeleton, never a stale value
+            ) : !flavorPricesReady || isFlavorsLoading ? (
+              // Not yet ready — skeleton, never a stale/fallback value
               <span className="inline-block h-8 w-32 animate-pulse rounded-lg bg-muted align-middle" />
             ) : minFlavorPrice !== null ? (
-              // Prices loaded — show "Starting from lowest_price × cookie_count"
+              // Prices confirmed — show "Starting from …"
               <>
                 <span className="block text-base font-normal text-muted-foreground">
                   {t("box.starting_from")}
@@ -266,7 +281,7 @@ function BoxDetail() {
             <BYOPicker
               flavors={flavors}
               resolvedPrices={resolvedFlavorPrices}
-              isPricesLoading={isFlavorPricesLoading}
+              pricesReady={flavorPricesReady}
               selection={selection}
               increment={increment}
               decrement={decrement}
@@ -333,7 +348,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 function BYOPicker({
   flavors,
   resolvedPrices,
-  isPricesLoading,
+  pricesReady,
   selection,
   increment,
   decrement,
@@ -343,7 +358,7 @@ function BYOPicker({
 }: {
   flavors: Awaited<ReturnType<typeof fetchFlavors>>;
   resolvedPrices: Record<string, number>;
-  isPricesLoading: boolean;
+  pricesReady: boolean;
   selection: Record<string, number>;
   increment: (id: string) => void;
   decrement: (id: string) => void;
@@ -413,10 +428,10 @@ function BYOPicker({
                 )}
 
                 {/* Per-cookie price
-                    - dir="ltr" fixes RTL BIDI number reordering on mobile Arabic layout
-                    - Skeleton shown while prices are loading (no stale value shown)
-                    - Hidden once loaded if this flavor has no price set */}
-                {isPricesLoading ? (
+                    dir="ltr" fixes RTL BIDI number reordering on Arabic layout.
+                    Skeleton shown while prices are not yet confirmed.
+                    Hidden if this flavor has no price set for this box. */}
+                {!pricesReady ? (
                   <span className="mt-0.5 inline-block h-3 w-16 animate-pulse rounded bg-muted" />
                 ) : flavorPrice > 0 ? (
                   <p dir="ltr" className="mt-0.5 text-xs font-semibold text-primary">
