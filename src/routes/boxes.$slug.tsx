@@ -292,7 +292,7 @@ function BoxDetail() {
         {/* Right column — flavor picker or fixed contents */}
         <div>
           {isFixed ? (
-            <FixedContents box={box} />
+            <FixedContents box={box} resolvedPrices={resolvedFlavorPrices} pricesReady={flavorPricesReady} />
           ) : (
             <BYOPicker
               flavors={flavors}
@@ -443,14 +443,18 @@ function BYOPicker({
                   </p>
                 )}
 
-                {/* Per-cookie price
-                    dir="ltr" fixes RTL BIDI number reordering on Arabic layout.
-                    Skeleton shown while prices are not yet confirmed.
-                    Hidden if this flavor has no price set for this box. */}
+                {/* Per-cookie price — shows effective (discounted) price.
+                    If a per-box discount is applied the original price is shown crossed out.
+                    dir="ltr" fixes RTL BIDI number reordering on Arabic layout. */}
                 {!pricesReady ? (
                   <span className="mt-0.5 inline-block h-3 w-16 animate-pulse rounded bg-muted" />
                 ) : flavorPrice > 0 ? (
-                  <p dir="ltr" className="mt-0.5 text-xs font-semibold text-primary">
+                  <p dir="ltr" className="mt-0.5 flex items-baseline gap-1.5 text-xs font-semibold text-primary">
+                    {f.price > flavorPrice && (
+                      <span className="font-normal text-muted-foreground line-through">
+                        {formatCurrency(f.price)}
+                      </span>
+                    )}
                     {formatCurrency(flavorPrice)}{" "}
                     <span className="font-normal text-muted-foreground">
                       / {t("box.per_cookie")}
@@ -493,33 +497,58 @@ function BYOPicker({
 
 function FixedContents({
   box,
+  resolvedPrices,
+  pricesReady,
 }: {
   box: NonNullable<Awaited<ReturnType<typeof fetchBoxBySlug>>>;
+  resolvedPrices: Record<string, number>;
+  pricesReady: boolean;
 }) {
   const { t, locale } = useI18n();
   return (
     <div>
       <h2 className="mb-4 font-display text-2xl">{t("byo.fixed_includes")}</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {box.box_fixed_flavors.map((bf) => (
-          <div
-            key={bf.flavor_id}
-            className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-3"
-          >
+        {box.box_fixed_flavors.map((bf) => {
+          const basePrice = Number(bf.flavors.price ?? 0);
+          const effectivePrice = resolvedPrices[bf.flavor_id] ?? 0;
+          const hasDiscount = pricesReady && basePrice > effectivePrice && effectivePrice > 0;
+
+          return (
             <div
-              className="h-16 w-16 rounded-xl"
-              style={{
-                background: bf.flavors.image_url
-                  ? `url(${bf.flavors.image_url}) center/cover`
-                  : "var(--gradient-pink-blue)",
-              }}
-            />
-            <div className="flex-1">
-              <p className="font-semibold">{localizedName(bf.flavors, locale)}</p>
-              <p className="text-xs text-muted-foreground">×{bf.quantity}</p>
+              key={bf.flavor_id}
+              className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-3"
+            >
+              <div
+                className="h-16 w-16 shrink-0 rounded-xl"
+                style={{
+                  background: bf.flavors.image_url
+                    ? `url(${bf.flavors.image_url}) center/cover`
+                    : "var(--gradient-pink-blue)",
+                }}
+              />
+              <div className="flex-1">
+                <p className="font-semibold">{localizedName(bf.flavors, locale)}</p>
+                <p className="text-xs text-muted-foreground">×{bf.quantity}</p>
+
+                {/* Per-cookie price with discount indicator */}
+                {!pricesReady ? (
+                  <span className="mt-0.5 inline-block h-3 w-16 animate-pulse rounded bg-muted" />
+                ) : effectivePrice > 0 ? (
+                  <p dir="ltr" className="mt-0.5 flex items-baseline gap-1.5 text-xs font-semibold text-primary">
+                    {hasDiscount && (
+                      <span className="font-normal text-muted-foreground line-through">
+                        {formatCurrency(basePrice)}
+                      </span>
+                    )}
+                    {formatCurrency(effectivePrice)}{" "}
+                    <span className="font-normal text-muted-foreground">/ {t("box.per_cookie")}</span>
+                  </p>
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
