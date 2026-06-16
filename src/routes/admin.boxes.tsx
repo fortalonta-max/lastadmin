@@ -22,6 +22,8 @@ type Box = {
   image_url: string | null;
   cookie_count: number;
   price: number;
+  /** Fixed EGP discount subtracted from the sum of selected flavors' default prices. 0 = no discount. */
+  discount: number;
   type: "fixed" | "byo";
   is_active: boolean;
   is_best_seller: boolean;
@@ -56,7 +58,7 @@ function BoxesAdmin() {
         <h1 className="font-display text-3xl">Boxes</h1>
         <button
           onClick={() =>
-            setEditing({ type: "byo", is_active: true, cookie_count: 6, price: 0, sale_enabled: false, sort_order: boxes.length + 1 })
+            setEditing({ type: "byo", is_active: true, cookie_count: 6, price: 0, discount: 0, sale_enabled: false, sort_order: boxes.length + 1 })
           }
           className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
         >
@@ -139,6 +141,8 @@ function BoxEditor({
       image_url: b.image_url ?? null,
       cookie_count: Number(b.cookie_count ?? 6),
       price: 0,
+      // New: fixed EGP discount subtracted from the flavor price sum at order time
+      discount: Math.max(0, Number(b.discount ?? 0)),
       type: boxType,
       is_active: b.is_active ?? true,
       is_best_seller: b.is_best_seller ?? false,
@@ -158,32 +162,6 @@ function BoxEditor({
       if (rows.length) {
         const { error } = await supabase.from("box_fixed_flavors").insert(rows);
         if (error) return toast.error(error.message);
-      }
-      // Recompute box.price from flavor_box_prices (single source of truth)
-      if (validFixed.length > 0) {
-        const { data: fbp } = await supabase
-          .from("flavor_box_prices")
-          .select("flavor_id, price")
-          .eq("box_id", boxId)
-          .in("flavor_id", validFixed.map((x) => x.flavor_id));
-        const priceMap: Record<string, number> = {};
-        (fbp ?? []).forEach((row) => { priceMap[row.flavor_id] = Number(row.price); });
-        const computedPrice = validFixed.reduce((sum, x) => sum + (priceMap[x.flavor_id] ?? 0) * x.quantity, 0);
-        if (computedPrice > 0) {
-          await supabase.from("boxes").update({ price: computedPrice }).eq("id", boxId);
-        }
-      }
-    } else {
-      // BYO box: cache min flavor price × cookie_count into box.price
-      const { data: fbp } = await supabase
-        .from("flavor_box_prices")
-        .select("price")
-        .eq("box_id", boxId);
-      const prices = (fbp ?? []).map((r) => Number(r.price)).filter((p) => p > 0);
-      const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-      const byoPrice = minPrice * Number(payload.cookie_count);
-      if (byoPrice > 0) {
-        await supabase.from("boxes").update({ price: byoPrice }).eq("id", boxId);
       }
     }
     toast.success("Saved");
@@ -217,6 +195,19 @@ function BoxEditor({
                 <option value="fixed">Fixed (chef's pick)</option>
               </select>
             </label>
+          </div>
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+            <Input
+              label="Fixed discount (EGP)"
+              type="number"
+              value={String(b.discount ?? 0)}
+              onChange={(v) => setB({ ...b, discount: Number(v) })}
+              placeholder="0"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Amount subtracted from the sum of selected flavors' default prices.
+              Set to <strong>0</strong> for no discount (price = sum of flavors only).
+            </p>
           </div>
           <Input label="Sort order" type="number" value={String(b.sort_order ?? 0)} onChange={(v) => setB({ ...b, sort_order: Number(v) })} />
           <div className="grid grid-cols-2 gap-2 text-sm">

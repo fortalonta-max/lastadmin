@@ -33,12 +33,15 @@ export type Box = {
   image_url: string | null;
   cookie_count: number;
   /**
-   * Derived cache — automatically maintained by the admin as:
-   *   min(flavor_box_prices.price for this box) × cookie_count
-   * Used only for box listing cards ("Starting from …").
-   * Do NOT use this for per-flavor price display inside the picker.
+   * Legacy cache field — kept for backward compatibility.
+   * All pricing is now derived from flavor default prices (flavors.price) minus box discount.
    */
   price: number;
+  /**
+   * Fixed EGP discount subtracted from the sum of selected flavors' default prices.
+   * Set to 0 for no discount (e.g. box type 4 behaviour).
+   */
+  discount: number;
   type: "fixed" | "byo";
   is_active: boolean;
   is_best_seller: boolean;
@@ -208,21 +211,20 @@ export async function fetchFlavors() {
 }
 
 /**
- * Fetch per-cookie prices for every flavor in the given box.
- * This is the ONLY function that should be used to price flavors in the picker.
+ * Fetch per-cookie prices for every flavor.
+ * New pricing system: uses flavors.default price (flavors.price) — universal across all boxes.
+ * The boxId parameter is kept for API compatibility but is no longer used.
  * Returns a map of flavor_id → price-per-cookie.
- * Flavors that have no entry in flavor_box_prices are absent from the map.
  */
-export async function fetchFlavorPricesForBox(boxId: string): Promise<Record<string, number>> {
+export async function fetchFlavorPricesForBox(_boxId: string): Promise<Record<string, number>> {
   const { data, error } = await supabase
-    .from("flavor_box_prices")
-    .select("flavor_id, price")
-    .eq("box_id", boxId);
+    .from("flavors")
+    .select("id, price");
   if (error) throw error;
   const map: Record<string, number> = {};
   for (const row of data ?? []) {
     const price = Number(row.price ?? 0);
-    if (price > 0) map[row.flavor_id] = price;
+    if (price > 0) map[row.id] = price;
   }
   return map;
 }
@@ -234,7 +236,11 @@ export async function fetchBoxes() {
     .eq("is_active", true)
     .order("sort_order");
   if (error) throw error;
-  return (data ?? []).map((b) => ({ ...b, price: Number(b.price) })) as Box[];
+  return (data ?? []).map((b) => ({
+    ...b,
+    price: Number(b.price),
+    discount: Number(b.discount ?? 0),
+  })) as Box[];
 }
 
 export async function fetchBoxBySlug(slug: string) {
@@ -246,7 +252,11 @@ export async function fetchBoxBySlug(slug: string) {
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return { ...data, price: Number(data.price) } as Box & {
+  return {
+    ...data,
+    price: Number(data.price),
+    discount: Number((data as any).discount ?? 0),
+  } as Box & {
     box_fixed_flavors: Array<{ quantity: number; flavor_id: string; flavors: Flavor }>;
   };
 }
@@ -303,28 +313,33 @@ export function localizedDesc<T extends Record<string, unknown>>(o: T, locale: L
 }
 
 /**
- * Fetch the minimum and maximum per-cookie flavor price for every BYO box.
- * Reads exclusively from flavor_box_prices — the single source of truth.
- * Used by box listing cards and buildbox page to display "Starting from …" prices.
- * Returns a map of box_id → { min, max }.
+ * Fetch the minimum and maximum per-cookie flavor default price.
+ * New pricing system: uses flavors.price (universal default price per cookie).
+ * Returns a map of box_id → { min, max } where min/max are the cheapest/priciest
+ * flavor default prices. Because prices are now universal, all BYO boxes share the
+ * same min/max flavor prices; the per-box discount is applied at the component level.
+ * Returns a map of box_id → { min, max } populated for every active BYO box.
  */
 export async function fetchByoPriceRangePerBox(): Promise<
   Record<string, { min: number; max: number }>
 > {
-  const { data: rows } = await supabase
-    .from("flavor_box_prices")
-    .select("box_id, price");
+  const [{ data: flavorRows }, { data: boxes }] = await Promise.all([
+    supabase.from("flavors").select("price").eq("is_available", true),
+    supabase.from("boxes").select("id").eq("is_active", true).eq("type", "byo"),
+  ]);
+
+  const prices = (flavorRows ?? [])
+    .map((r) => Number(r.price ?? 0))
+    .filter((p) => p > 0);
+
+  if (prices.length === 0) return {};
+
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
 
   const result: Record<string, { min: number; max: number }> = {};
-  for (const row of rows ?? []) {
-    const p = Number(row.price ?? 0);
-    if (p <= 0) continue;
-    if (!result[row.box_id]) {
-      result[row.box_id] = { min: p, max: p };
-    } else {
-      result[row.box_id].min = Math.min(result[row.box_id].min, p);
-      result[row.box_id].max = Math.max(result[row.box_id].max, p);
-    }
+  for (const box of boxes ?? []) {
+    result[box.id] = { min, max };
   }
   return result;
 }

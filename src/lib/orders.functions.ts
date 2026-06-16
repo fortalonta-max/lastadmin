@@ -61,39 +61,25 @@ export const placeOrder = createServerFn({ method: "POST" })
     const boxIds = [...new Set(data.items.map((i) => i.box_id))];
     const { data: boxes, error: boxErr } = await supabaseAdmin
       .from("boxes")
-      .select("id, price, cookie_count, name_en, type, is_active")
+      .select("id, price, discount, cookie_count, name_en, type, is_active")
       .in("id", boxIds);
     if (boxErr) throw new Error(boxErr.message);
 
     const boxMap = new Map(boxes?.map((b) => [b.id, b]) ?? []);
 
-    const byoFlavorIds = new Set<string>();
-    const byoBoxIds = new Set<string>();
+    // Collect all flavor IDs referenced by any order item (both BYO and fixed)
+    const allFlavorIds = new Set<string>();
     for (const item of data.items) {
-      if (boxMap.get(item.box_id)?.type === "byo") {
-        byoBoxIds.add(item.box_id);
-        item.selected_flavors.forEach((f) => byoFlavorIds.add(f.flavor_id));
-      }
+      item.selected_flavors.forEach((f) => allFlavorIds.add(f.flavor_id));
     }
 
-    const boxFlavorPriceMap = new Map<string, number>();
+    // Fetch all referenced flavors' default prices in one query
     const flavorPriceMap = new Map<string, number>();
-
-    if (byoFlavorIds.size > 0) {
-      const { data: bfpRows, error: bfpErr } = await supabaseAdmin
-        .from("flavor_box_prices")
-        .select("flavor_id, box_id, price")
-        .in("flavor_id", [...byoFlavorIds])
-        .in("box_id", [...byoBoxIds]);
-      if (bfpErr) throw new Error(bfpErr.message);
-      (bfpRows ?? []).forEach((r) =>
-        boxFlavorPriceMap.set(`${r.box_id}:${r.flavor_id}`, Number(r.price)),
-      );
-
+    if (allFlavorIds.size > 0) {
       const { data: flavorRows, error: flavorErr } = await supabaseAdmin
         .from("flavors")
         .select("id, price")
-        .in("id", [...byoFlavorIds]);
+        .in("id", [...allFlavorIds]);
       if (flavorErr) throw new Error(flavorErr.message);
       (flavorRows ?? []).forEach((f) => flavorPriceMap.set(f.id, Number(f.price ?? 0)));
     }
@@ -107,14 +93,20 @@ export const placeOrder = createServerFn({ method: "POST" })
       if (b.type === "byo" && totalSelected !== b.cookie_count) {
         throw new Error(`Please select exactly ${b.cookie_count} cookies for ${b.name_en}.`);
       }
+
+      // New pricing: sum of selected flavors' default prices minus the box fixed discount.
+      // Works for both BYO (customer-selected flavors) and fixed boxes (preset flavors).
+      const flavorTotal = item.selected_flavors.reduce(
+        (sum, f) => sum + (flavorPriceMap.get(f.flavor_id) ?? 0) * f.quantity,
+        0,
+      );
+      const boxDiscount = Number((b as any).discount ?? 0);
+      // If no flavor prices are configured yet, fall back to box.price for backward compat.
       const unitPrice =
-        b.type === "byo"
-          ? item.selected_flavors.reduce((sum, f) => {
-              const specific = boxFlavorPriceMap.get(`${item.box_id}:${f.flavor_id}`);
-              const fallback = flavorPriceMap.get(f.flavor_id) ?? 0;
-              return sum + (specific ?? fallback) * f.quantity;
-            }, 0)
+        flavorTotal > 0
+          ? Math.max(0, flavorTotal - boxDiscount)
           : Number(b.price);
+
       computedUnitPrices.push(unitPrice);
       subtotal += unitPrice * item.quantity;
     }

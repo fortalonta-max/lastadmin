@@ -111,22 +111,37 @@ function BoxDetail() {
     [selection],
   );
 
-  // Total price of the current BYO selection
+  // Total price of the current BYO selection (sum of flavors' default prices minus box discount)
   const byoPrice = useMemo(
-    () =>
-      Object.entries(selection).reduce(
+    () => {
+      const flavorTotal = Object.entries(selection).reduce(
         (total, [flavor_id, qty]) => total + (resolvedFlavorPrices[flavor_id] ?? 0) * qty,
         0,
-      ),
-    [selection, resolvedFlavorPrices],
+      );
+      const boxDiscount = Number(box?.discount ?? 0);
+      return Math.max(0, flavorTotal - boxDiscount);
+    },
+    [selection, resolvedFlavorPrices, box],
   );
 
-  // Lowest per-cookie price across all flavors in this box —
-  // used for "Starting from …" when nothing has been selected yet.
+  // Lowest per-cookie price across all flavors — used for "Starting from …" on BYO boxes.
   const minFlavorPrice = useMemo(() => {
     const prices = Object.values(resolvedFlavorPrices).filter((p) => p > 0);
     return prices.length > 0 ? Math.min(...prices) : null;
   }, [resolvedFlavorPrices]);
+
+  // Fixed box price: sum of each preset flavor's default price × quantity, minus box discount.
+  // Falls back to box.price (legacy cache) if flavor prices are not configured.
+  const fixedPrice = useMemo(() => {
+    if (!flavorPricesReady || !box?.box_fixed_flavors?.length) return null;
+    const flavorTotal = box.box_fixed_flavors.reduce(
+      (sum, bf) => sum + (resolvedFlavorPrices[bf.flavor_id] ?? 0) * bf.quantity,
+      0,
+    );
+    if (flavorTotal <= 0) return null;
+    const boxDiscount = Number(box.discount ?? 0);
+    return Math.max(0, flavorTotal - boxDiscount);
+  }, [box, resolvedFlavorPrices, flavorPricesReady]);
 
   // ── Pixel ────────────────────────────────────────────────────────────────────
 
@@ -199,7 +214,8 @@ function BoxDetail() {
       });
     }
 
-    const unitPrice = isFixed ? box.price : byoPrice;
+    // Fixed box: use computed flavor-sum minus discount; fall back to legacy box.price if not configured.
+    const unitPrice = isFixed ? (fixedPrice ?? box.price) : byoPrice;
 
     add({
       box_id: box.id,
@@ -254,7 +270,10 @@ function BoxDetail() {
           {/* Price display */}
           <p className="mt-4 font-display text-3xl">
             {isFixed ? (
-              formatCurrency(box.price)
+              // Computed: sum of preset flavors' default prices − box discount; fallback to legacy box.price
+              flavorPricesReady
+                ? formatCurrency(fixedPrice ?? box.price)
+                : <span className="inline-block h-8 w-32 animate-pulse rounded-lg bg-muted align-middle" />
             ) : totalSelected > 0 ? (
               // Active selection — show running total
               formatCurrency(byoPrice)
@@ -267,7 +286,7 @@ function BoxDetail() {
                 <span className="block text-base font-normal text-muted-foreground">
                   {t("box.starting_from")}
                 </span>
-                {formatCurrency(minFlavorPrice * cookieCount)}
+                {formatCurrency(Math.max(0, minFlavorPrice * cookieCount - Number(box.discount ?? 0)))}
               </>
             ) : null}
           </p>
@@ -321,8 +340,8 @@ function BoxDetail() {
           >
             <ShoppingBag className="h-4 w-4" />
             {t("cta.add_to_cart")}
-            {(isFixed ? box.price : byoPrice) > 0 && (
-              <> — {formatCurrency(isFixed ? box.price : byoPrice)}</>
+            {(isFixed ? (fixedPrice ?? box.price) : byoPrice) > 0 && (
+              <> — {formatCurrency(isFixed ? (fixedPrice ?? box.price) : byoPrice)}</>
             )}
           </button>
         </div>

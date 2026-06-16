@@ -21,6 +21,7 @@ type Flavor = {
   is_available: boolean;
   is_limited_edition: boolean;
   is_out_of_stock: boolean;
+  /** Default price per cookie — the single source of truth for pricing. */
   price: number;
   sort_order: number;
 };
@@ -65,7 +66,8 @@ function FlavorsAdmin() {
       is_available: f.is_available ?? true,
       is_limited_edition: f.is_limited_edition ?? false,
       is_out_of_stock: f.is_out_of_stock ?? false,
-      price: 0,
+      // New pricing system: save the actual default price per cookie
+      price: Number(f.price ?? 0),
       sort_order: Number(f.sort_order ?? 0),
     };
 
@@ -227,42 +229,23 @@ function FlavorEditor({
           <Input label="Slug" value={f.slug ?? ""} onChange={(v) => setF({ ...f, slug: v })} placeholder="auto from name" />
           <Textarea label="Description (EN)" value={f.description_en ?? ""} onChange={(v) => setF({ ...f, description_en: v })} />
           <Textarea label="Description (AR)" value={f.description_ar ?? ""} onChange={(v) => setF({ ...f, description_ar: v })} />
+          <Input
+            label="Default price per cookie (EGP)"
+            type="number"
+            value={String(f.price ?? 0)}
+            onChange={(v) => setF({ ...f, price: Number(v) })}
+            placeholder="e.g. 25"
+          />
+          <div className="rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/5 p-3 text-[11px] text-muted-foreground">
+            <strong className="text-foreground">Pricing note:</strong> This default price applies across all boxes.
+            Each box can have a fixed discount (set on the Box page) subtracted from the total flavor sum.
+          </div>
           <Input label="Sort order" type="number" value={String(f.sort_order ?? 0)} onChange={(v) => setF({ ...f, sort_order: Number(v) })} />
           <div className="grid grid-cols-3 gap-2 text-sm">
             <Toggle label="Available" checked={f.is_available ?? true} onChange={(v) => setF({ ...f, is_available: v })} />
             <Toggle label="Limited ed." checked={f.is_limited_edition ?? false} onChange={(v) => setF({ ...f, is_limited_edition: v })} />
             <Toggle label="Out of stock" checked={f.is_out_of_stock ?? false} onChange={(v) => setF({ ...f, is_out_of_stock: v })} />
           </div>
-          {boxes.length > 0 && (
-            <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-3">
-              <p className="text-xs font-semibold">Price per cookie — by box</p>
-              <p className="text-[11px] text-muted-foreground">
-                Set the price per cookie for this flavor in each box. This is the only price source used on the storefront.
-              </p>
-              {boxes.map((box) => (
-                <div key={box.id} className="flex items-center gap-3">
-                  <span className="flex-1 text-xs">
-                    {box.name_en}{" "}
-                    <span className="text-muted-foreground">({box.cookie_count} cookies)</span>{" "}
-                    <span className="rounded bg-muted px-1 py-0.5 text-[10px] uppercase tracking-wide">
-                      {box.type}
-                    </span>
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="default"
-                    value={boxPrices[box.id] ?? ""}
-                    onChange={(e) =>
-                      setBoxPrices((prev) => ({ ...prev, [box.id]: Number(e.target.value) }))
-                    }
-                    className="w-28 rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-full px-4 py-2 text-sm">Cancel</button>

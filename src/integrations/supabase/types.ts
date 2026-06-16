@@ -56,6 +56,7 @@ export type Database = {
           created_at: string
           description_ar: string | null
           description_en: string | null
+          discount: number
           id: string
           image_url: string | null
           is_active: boolean
@@ -73,6 +74,7 @@ export type Database = {
           created_at?: string
           description_ar?: string | null
           description_en?: string | null
+          discount?: number
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -90,6 +92,7 @@ export type Database = {
           created_at?: string
           description_ar?: string | null
           description_en?: string | null
+          discount?: number
           id?: string
           image_url?: string | null
           is_active?: boolean
