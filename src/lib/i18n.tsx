@@ -62,6 +62,7 @@ const en: Dict = {
   "story.pillar3": "Hand-packed with care",
 
   "box.cookies": "cookies",
+  "box.per_cookie": "cookie",
   "box.from": "From",
   "box.starting_from": "Starting from",
   "box.best_seller": "Best seller",
@@ -291,6 +292,7 @@ const ar: Dict = {
   "story.pillar3": "يُعبّأ بعناية يدوية",
 
   "box.cookies": "كوكيز",
+  "box.per_cookie": "كوكيز",
   "box.from": "من",
   "box.starting_from": "يبدأ من",
   "box.best_seller": "الأكثر مبيعاً",

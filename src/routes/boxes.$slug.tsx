@@ -361,10 +361,13 @@ function BYOPicker({
                     {localizedDesc(f, locale)}
                   </p>
                 )}
-                {/* Show price per cookie — visible on all screen sizes */}
+                {/* Show price per cookie — dir=ltr fixes RTL BIDI number reordering on mobile */}
                 {flavorPrice > 0 && (
-                  <p className="mt-0.5 text-xs font-semibold text-primary">
-                    {formatCurrency(flavorPrice)} / cookie
+                  <p dir="ltr" className="mt-0.5 text-xs font-semibold text-primary">
+                    {formatCurrency(flavorPrice)}{" "}
+                    <span className="font-normal text-muted-foreground">
+                      / {t("box.per_cookie")}
+                    </span>
                   </p>
                 )}
               </div>
