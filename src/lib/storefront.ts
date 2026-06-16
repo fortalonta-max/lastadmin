@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { type Locale, pickLocalized } from "./i18n";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 export type Flavor = {
   id: string;
   slug: string;
@@ -9,10 +11,15 @@ export type Flavor = {
   description_en: string | null;
   description_ar: string | null;
   image_url: string | null;
+  /**
+   * Legacy field — always stored as 0 in the database.
+   * All flavor pricing is managed exclusively via flavor_box_prices.
+   * Do NOT use this field for any price display or calculation.
+   */
+  price: number;
   is_available: boolean;
   is_limited_edition: boolean;
   is_out_of_stock: boolean;
-  price: number;
   sort_order: number;
 };
 
@@ -25,6 +32,12 @@ export type Box = {
   description_ar: string | null;
   image_url: string | null;
   cookie_count: number;
+  /**
+   * Derived cache — automatically maintained by the admin as:
+   *   min(flavor_box_prices.price for this box) × cookie_count
+   * Used only for box listing cards ("Starting from …").
+   * Do NOT use this for per-flavor price display inside the picker.
+   */
   price: number;
   type: "fixed" | "byo";
   is_active: boolean;
@@ -47,7 +60,7 @@ export type Product = {
   sort_order: number;
 };
 
-// ── SiteSettings type ─────────────────────────────────────────────────────────
+// ── SiteSettings ──────────────────────────────────────────────────────────────
 
 export type SiteSettings = {
   store_name: string;
@@ -69,7 +82,6 @@ export type SiteSettings = {
   contact_phone: string;
   contact_address: string;
   meta_pixel_id: string | null;
-  // Our Story
   story_heading_en: string;
   story_heading_ar: string;
   story_body_en: string;
@@ -80,10 +92,8 @@ export type SiteSettings = {
   story_pillar2_ar: string;
   story_pillar3_en: string;
   story_pillar3_ar: string;
-  // Fixed delivery bar (baby pink, always visible)
   delivery_bar_text_en: string;
   delivery_bar_text_ar: string;
-  // Announcement bar (baby blue scrolling)
   announcement_enabled: boolean;
   announcement_text_en: string;
   announcement_text_ar: string;
@@ -129,6 +139,8 @@ const DEFAULT_SETTINGS: SiteSettings = {
   announcement_text_en: "Same-day delivery until 8:00 PM. Free delivery on orders over EGP 750.",
   announcement_text_ar: "توصيل في نفس اليوم حتى 8 مساءً. توصيل مجاني للطلبات فوق 750 جنيه.",
 };
+
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 export async function fetchSettings(): Promise<SiteSettings> {
   const { data, error } = await supabase
@@ -195,6 +207,12 @@ export async function fetchFlavors() {
   return (data ?? []) as Flavor[];
 }
 
+/**
+ * Fetch per-cookie prices for every flavor in the given box.
+ * This is the ONLY function that should be used to price flavors in the picker.
+ * Returns a map of flavor_id → price-per-cookie.
+ * Flavors that have no entry in flavor_box_prices are absent from the map.
+ */
 export async function fetchFlavorPricesForBox(boxId: string): Promise<Record<string, number>> {
   const { data, error } = await supabase
     .from("flavor_box_prices")
@@ -202,9 +220,10 @@ export async function fetchFlavorPricesForBox(boxId: string): Promise<Record<str
     .eq("box_id", boxId);
   if (error) throw error;
   const map: Record<string, number> = {};
-  (data ?? []).forEach((row) => {
-    map[row.flavor_id] = Number(row.price);
-  });
+  for (const row of data ?? []) {
+    const price = Number(row.price ?? 0);
+    if (price > 0) map[row.flavor_id] = price;
+  }
   return map;
 }
 
@@ -284,20 +303,20 @@ export function localizedDesc<T extends Record<string, unknown>>(o: T, locale: L
 }
 
 /**
- * Fetch the minimum and maximum flavor price for every box.
- * Uses only flavor_box_prices — the single source of truth for all pricing.
- * Returns a map of box_id → { min, max }
+ * Fetch the minimum and maximum per-cookie flavor price for every BYO box.
+ * Reads exclusively from flavor_box_prices — the single source of truth.
+ * Used by box listing cards and buildbox page to display "Starting from …" prices.
+ * Returns a map of box_id → { min, max }.
  */
 export async function fetchByoPriceRangePerBox(): Promise<
   Record<string, { min: number; max: number }>
 > {
-  const { data: bfpRows } = await supabase
+  const { data: rows } = await supabase
     .from("flavor_box_prices")
-    .select("box_id, flavor_id, price");
+    .select("box_id, price");
 
-  // Build per-box min/max exclusively from flavor_box_prices
   const result: Record<string, { min: number; max: number }> = {};
-  for (const row of bfpRows ?? []) {
+  for (const row of rows ?? []) {
     const p = Number(row.price ?? 0);
     if (p <= 0) continue;
     if (!result[row.box_id]) {
@@ -308,15 +327,4 @@ export async function fetchByoPriceRangePerBox(): Promise<
     }
   }
   return result;
-}
-
-export async function fetchDefaultFlavorPriceRange(): Promise<{ min: number; max: number }> {
-  const { data } = await supabase
-    .from("flavor_box_prices")
-    .select("price");
-  const prices = (data ?? []).map((row) => Number(row.price ?? 0)).filter((p) => p > 0);
-  return {
-    min: prices.length > 0 ? Math.min(...prices) : 0,
-    max: prices.length > 0 ? Math.max(...prices) : 0,
-  };
 }

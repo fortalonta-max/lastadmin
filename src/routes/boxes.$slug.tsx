@@ -34,47 +34,56 @@ function BoxDetail() {
   const navigate = useNavigate();
   const { add } = useCart();
 
-  const { data: box, isLoading } = useQuery({
+  // ── Data fetching ────────────────────────────────────────────────────────────
+
+  const { data: box, isLoading: isBoxLoading } = useQuery({
     queryKey: ["box", slug],
     queryFn: () => fetchBoxBySlug(slug),
   });
+
   const { data: flavors = [], isLoading: isFlavorsLoading } = useQuery({
     queryKey: ["flavors"],
     queryFn: fetchFlavors,
   });
 
-  // Box-specific flavor prices from flavor_box_prices table
+  // ── Flavor pricing ───────────────────────────────────────────────────────────
+  //
+  // SINGLE SOURCE OF TRUTH: flavor_box_prices table only.
+  //
+  // Design:
+  //   • Each flavor has a different per-cookie price depending on which box it
+  //     is in. A 4-cookie box may charge more per cookie than a 6-cookie box.
+  //   • Prices are stored as rows in flavor_box_prices(box_id, flavor_id, price).
+  //   • flavors.price is a legacy field always set to 0 — never used here.
+  //   • box.price is a derived cache (min_price × cookie_count) used only for
+  //     listing cards — never used as a per-flavor fallback here.
+  //
+  // Loading behaviour:
+  //   • While the query is in flight, resolvedFlavorPrices is an empty map {}.
+  //   • The BYO picker hides price tags until the map is populated.
+  //   • This prevents the mobile bug where all flavors showed the same price
+  //     before the real per-flavor prices arrived from the database.
+
   const { data: boxFlavorPrices = {}, isLoading: isFlavorPricesLoading } = useQuery({
     queryKey: ["flavor-box-prices", box?.id],
     queryFn: () => fetchFlavorPricesForBox(box!.id),
     enabled: !!box?.id,
+    staleTime: 30_000,
   });
 
-  // Resolved price per flavor — three-level fallback:
-  // 1. flavor_box_prices[flavor_id]  — box-specific per-flavor override (most precise)
-  // 2. flavors.price                 — flavor's own base price (if > 0)
-  // 3. box.price / cookie_count      — even split of the box total price per cookie
-  //    Only applied AFTER boxFlavorPrices has finished loading. If applied while the
-  //    query is still in-flight, every flavor with no explicit f.price falls back to
-  //    box.price / cookie_count — the same value for all flavors — which equals the
-  //    minimum flavor price and makes mobile users see the lowest price on every card.
+  // Map of flavor_id → per-cookie price for this specific box.
+  // Returns {} while loading — no stale or derived values are ever substituted.
   const resolvedFlavorPrices = useMemo<Record<string, number>>(() => {
-    const perCookieFallback =
-      box && box.cookie_count > 0 && box.price > 0
-        ? box.price / box.cookie_count
-        : 0;
-    // Do not apply the per-cookie fallback while the box-flavor-price query is still
-    // loading. Doing so would set every flavor (that has no explicit f.price) to the
-    // same minimum value before the real per-flavor prices arrive.
-    const fallbackWhenUnknown = (box?.id && isFlavorPricesLoading) ? 0 : perCookieFallback;
+    if (isFlavorPricesLoading) return {};
     const map: Record<string, number> = {};
-    flavors.forEach((f) => {
-      const boxSpecific = boxFlavorPrices[f.id];
-      const flavorBase = Number(f.price) > 0 ? Number(f.price) : undefined;
-      map[f.id] = boxSpecific ?? flavorBase ?? fallbackWhenUnknown;
-    });
+    for (const f of flavors) {
+      const price = Number(boxFlavorPrices[f.id] ?? 0);
+      if (price > 0) map[f.id] = price;
+    }
     return map;
-  }, [flavors, boxFlavorPrices, box, isFlavorPricesLoading]);
+  }, [flavors, boxFlavorPrices, isFlavorPricesLoading]);
+
+  // ── Selection state ──────────────────────────────────────────────────────────
 
   const [selection, setSelection] = useState<Record<string, number>>({});
 
@@ -87,16 +96,24 @@ function BoxDetail() {
     [selection],
   );
 
-  const byoPrice = useMemo(() => {
-    return Object.entries(selection).reduce((total, [flavor_id, qty]) => {
-      return total + (resolvedFlavorPrices[flavor_id] ?? 0) * qty;
-    }, 0);
-  }, [selection, resolvedFlavorPrices]);
+  // Total price of the current BYO selection
+  const byoPrice = useMemo(
+    () =>
+      Object.entries(selection).reduce(
+        (total, [flavor_id, qty]) => total + (resolvedFlavorPrices[flavor_id] ?? 0) * qty,
+        0,
+      ),
+    [selection, resolvedFlavorPrices],
+  );
 
-  const minByoPrice = useMemo(() => {
+  // Minimum per-cookie price across all flavors for this box — used for
+  // "Starting from …" when no flavors have been selected yet.
+  const minFlavorPrice = useMemo(() => {
     const prices = Object.values(resolvedFlavorPrices).filter((p) => p > 0);
     return prices.length > 0 ? Math.min(...prices) : null;
   }, [resolvedFlavorPrices]);
+
+  // ── Pixel ────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (box) {
@@ -110,7 +127,9 @@ function BoxDetail() {
     }
   }, [box]);
 
-  if (isLoading) {
+  // ── Loading / not-found guards ───────────────────────────────────────────────
+
+  if (isBoxLoading) {
     return (
       <Shell>
         <p className="text-muted-foreground">Loading…</p>
@@ -124,6 +143,8 @@ function BoxDetail() {
       </Shell>
     );
   }
+
+  // ── Derived state ────────────────────────────────────────────────────────────
 
   const isFixed = box.type === "fixed";
   const cookieCount = box.cookie_count;
@@ -143,6 +164,8 @@ function BoxDetail() {
       return next;
     });
   };
+
+  // ── Add to cart ──────────────────────────────────────────────────────────────
 
   const handleAdd = () => {
     if (!canAdd) return;
@@ -185,6 +208,8 @@ function BoxDetail() {
     navigate({ to: "/cart" });
   };
 
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <Shell>
       <Link to="/boxes" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -192,6 +217,7 @@ function BoxDetail() {
       </Link>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-[5fr_7fr]">
+        {/* Left column — image + info + price summary */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div
             className="aspect-square w-full overflow-hidden rounded-3xl shadow-[var(--shadow-card)]"
@@ -210,25 +236,29 @@ function BoxDetail() {
           <h1 className="mt-3 font-display text-4xl">{localizedName(box, locale)}</h1>
           <p className="mt-2 text-muted-foreground">{localizedDesc(box, locale)}</p>
 
-          {/* Price display — always visible */}
+          {/* Price display */}
           <p className="mt-4 font-display text-3xl">
             {isFixed ? (
               formatCurrency(box.price)
             ) : totalSelected > 0 ? (
+              // Customer has made a selection — show the running total
               formatCurrency(byoPrice)
-            ) : minByoPrice !== null ? (
+            ) : isFlavorPricesLoading || isFlavorsLoading ? (
+              // Prices are still loading — show a skeleton, never a stale value
+              <span className="inline-block h-8 w-32 animate-pulse rounded-lg bg-muted align-middle" />
+            ) : minFlavorPrice !== null ? (
+              // Prices loaded — show "Starting from lowest_price × cookie_count"
               <>
                 <span className="block text-base font-normal text-muted-foreground">
                   {t("box.starting_from")}
                 </span>
-                {formatCurrency(minByoPrice * cookieCount)}
+                {formatCurrency(minFlavorPrice * cookieCount)}
               </>
-            ) : isFlavorsLoading ? (
-              <span className="inline-block h-5 w-24 animate-pulse rounded bg-muted align-middle" />
             ) : null}
           </p>
         </div>
 
+        {/* Right column — flavor picker or fixed contents */}
         <div>
           {isFixed ? (
             <FixedContents box={box} />
@@ -236,6 +266,7 @@ function BoxDetail() {
             <BYOPicker
               flavors={flavors}
               resolvedPrices={resolvedFlavorPrices}
+              isPricesLoading={isFlavorPricesLoading}
               selection={selection}
               increment={increment}
               decrement={decrement}
@@ -285,6 +316,8 @@ function BoxDetail() {
   );
 }
 
+// ── Shell ──────────────────────────────────────────────────────────────────────
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
@@ -295,9 +328,12 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ── BYO Picker ─────────────────────────────────────────────────────────────────
+
 function BYOPicker({
   flavors,
   resolvedPrices,
+  isPricesLoading,
   selection,
   increment,
   decrement,
@@ -307,6 +343,7 @@ function BYOPicker({
 }: {
   flavors: Awaited<ReturnType<typeof fetchFlavors>>;
   resolvedPrices: Record<string, number>;
+  isPricesLoading: boolean;
   selection: Record<string, number>;
   increment: (id: string) => void;
   decrement: (id: string) => void;
@@ -316,6 +353,7 @@ function BYOPicker({
 }) {
   const { t, locale } = useI18n();
   const pct = Math.min(100, (totalSelected / cookieCount) * 100);
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -324,12 +362,16 @@ function BYOPicker({
           {t("byo.selected", { n: totalSelected, total: cookieCount })}
         </span>
       </div>
+
+      {/* Progress bar */}
       <div className="mb-6 h-2 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full transition-[width] duration-300"
           style={{ width: `${pct}%`, background: "var(--gradient-pink-blue)" }}
         />
       </div>
+
+      {/* Flavor grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {flavors.map((f) => {
           const qty = selection[f.id] ?? 0;
@@ -337,17 +379,17 @@ function BYOPicker({
           const isFull = remaining === 0;
           const disabledAdd = unavailable || (isFull && qty === 0);
           const flavorPrice = resolvedPrices[f.id] ?? 0;
+
           return (
             <div
               key={f.id}
               className={cn(
                 "flex items-center gap-4 rounded-2xl border p-3 transition-colors",
-                qty > 0
-                  ? "border-primary/50 bg-[var(--pink-soft)]"
-                  : "border-border/60 bg-card",
+                qty > 0 ? "border-primary/50 bg-[var(--pink-soft)]" : "border-border/60 bg-card",
                 unavailable && "opacity-50",
               )}
             >
+              {/* Flavor image */}
               <div
                 className="h-16 w-16 shrink-0 rounded-xl"
                 style={{
@@ -356,6 +398,8 @@ function BYOPicker({
                     : "var(--gradient-pink-blue)",
                 }}
               />
+
+              {/* Flavor info */}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{localizedName(f, locale)}</p>
                 <div className="mt-1 flex flex-wrap gap-1">
@@ -367,16 +411,24 @@ function BYOPicker({
                     {localizedDesc(f, locale)}
                   </p>
                 )}
-                {/* Show price per cookie — dir=ltr fixes RTL BIDI number reordering on mobile */}
-                {flavorPrice > 0 && (
+
+                {/* Per-cookie price
+                    - dir="ltr" fixes RTL BIDI number reordering on mobile Arabic layout
+                    - Skeleton shown while prices are loading (no stale value shown)
+                    - Hidden once loaded if this flavor has no price set */}
+                {isPricesLoading ? (
+                  <span className="mt-0.5 inline-block h-3 w-16 animate-pulse rounded bg-muted" />
+                ) : flavorPrice > 0 ? (
                   <p dir="ltr" className="mt-0.5 text-xs font-semibold text-primary">
                     {formatCurrency(flavorPrice)}{" "}
                     <span className="font-normal text-muted-foreground">
                       / {t("box.per_cookie")}
                     </span>
                   </p>
-                )}
+                ) : null}
               </div>
+
+              {/* +/− stepper */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -405,6 +457,8 @@ function BYOPicker({
     </div>
   );
 }
+
+// ── Fixed box contents ─────────────────────────────────────────────────────────
 
 function FixedContents({
   box,
