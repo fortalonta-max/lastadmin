@@ -396,16 +396,19 @@ function BoxCard({
   t: (key: string) => string;
   badge?: string;
   badgeVariant?: "pink" | "blue" | "gold";
-  priceRanges?: Record<string, { min: number; max: number }>;
+  priceRanges?: Record<string, { min: number; max: number; fixedPrice?: number }>;
 }) {
   const isByo = b.type === "byo";
 
-  // For BYO boxes: compute starting price from lowest flavor price × cookie count
-  // If flavor_box_prices has no entries (lowestFlavorPrice = 0), fall back to b.price
+  // BYO: lowest effective flavor price × cookie_count; fallback to b.price.
+  // Fixed: sum of preset flavors' effective prices (computed by fetchByoPriceRangePerBox);
+  //        fallback to legacy b.price. This MUST mirror /boxes listing — otherwise
+  //        fixed boxes with b.price=0 render no price on first load (regression).
   const lowestFlavorPrice = isByo ? (priceRanges[b.id]?.min ?? 0) : 0;
+  const fixedPrice = !isByo ? priceRanges[b.id]?.fixedPrice : undefined;
   const displayPrice = isByo
     ? (lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : b.price)
-    : b.price;
+    : (fixedPrice && fixedPrice > 0 ? fixedPrice : b.price);
 
   return (
     <Link
