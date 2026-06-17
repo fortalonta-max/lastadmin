@@ -61,4 +61,5 @@ ALTER TABLE public.site_settings
   ADD COLUMN IF NOT EXISTS page_boxes_enabled    boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS page_buildbox_enabled boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS page_flavors_enabled  boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS page_products_enabled boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS page_contact_enabled  boolean NOT NULL DEFAULT true;

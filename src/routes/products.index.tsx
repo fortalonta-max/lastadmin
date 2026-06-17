@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
-import { fetchProducts, localizedName, localizedDesc } from "@/lib/storefront";
+import { fetchProjects, localizedName, localizedDesc } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/products/")({
@@ -20,7 +20,7 @@ function ProductsPage() {
   const { t, locale } = useI18n();
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
-    queryFn: fetchProducts,
+    queryFn: fetchProjects,
   });
 
   return (
@@ -40,10 +40,8 @@ function ProductsPage() {
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((p) => (
-              <Link
+              <div
                 key={p.id}
-                to="/products/$slug"
-                params={{ slug: p.slug }}
                 className="group overflow-hidden rounded-3xl border border-border/60 bg-card transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-card)]"
               >
                 <div
@@ -67,9 +65,23 @@ function ProductsPage() {
                       {localizedDesc(p, locale)}
                     </p>
                   )}
-                  <p className="mt-4 font-display text-2xl">{formatCurrency(p.price)}</p>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    {p.price > 0 && (
+                      <p className="font-display text-2xl">{formatCurrency(p.price)}</p>
+                    )}
+                    {p.link_url && (
+                      <a
+                        href={p.link_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ms-auto inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
+                      >
+                        View ↗
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}

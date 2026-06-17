@@ -252,6 +252,7 @@ function SettingsAdmin() {
           page_boxes_enabled:    form.page_boxes_enabled,
           page_buildbox_enabled: form.page_buildbox_enabled,
           page_flavors_enabled:  form.page_flavors_enabled,
+          page_products_enabled: form.page_products_enabled,
           page_contact_enabled:  form.page_contact_enabled,
           // Telegram
           telegram_bot_token: tgToken.trim() || null,
@@ -390,6 +391,13 @@ function SettingsAdmin() {
               <p className="text-xs text-muted-foreground">/flavors</p>
             </div>
             <Toggle label="" checked={form.page_flavors_enabled} onChange={(v) => set("page_flavors_enabled", v)} />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Products page</p>
+              <p className="text-xs text-muted-foreground">/products</p>
+            </div>
+            <Toggle label="" checked={form.page_products_enabled} onChange={(v) => set("page_products_enabled", v)} />
           </div>
           <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
             <div>

@@ -161,6 +161,7 @@ export function SiteHeader() {
     { to: "/boxes", label: t("nav.boxes"), enabled: settings?.page_boxes_enabled ?? true },
     { to: "/buildbox", label: t("nav.buildbox"), enabled: settings?.page_buildbox_enabled ?? true },
     { to: "/flavors", label: t("nav.flavors"), enabled: settings?.page_flavors_enabled ?? true },
+    { to: "/products", label: t("nav.products"), enabled: settings?.page_products_enabled ?? true },
     { to: "/#contact", label: t("nav.contact"), enabled: settings?.page_contact_enabled ?? true },
   ].filter((l) => l.enabled);
 

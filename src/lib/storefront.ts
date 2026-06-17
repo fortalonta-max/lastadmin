@@ -160,7 +160,7 @@ export async function fetchSettings(): Promise<SiteSettings> {
       "story_pillar1_en, story_pillar1_ar, story_pillar2_en, story_pillar2_ar, story_pillar3_en, story_pillar3_ar, " +
       "announcement_enabled, announcement_text_en, announcement_text_ar, " +
       "delivery_bar_text_en, delivery_bar_text_ar, " +
-      "page_boxes_enabled, page_buildbox_enabled, page_flavors_enabled, page_contact_enabled"
+      "page_boxes_enabled, page_buildbox_enabled, page_flavors_enabled, page_products_enabled, page_contact_enabled"
     )
     .eq("id", 1)
     .maybeSingle();
@@ -205,6 +205,7 @@ export async function fetchSettings(): Promise<SiteSettings> {
     page_boxes_enabled: (data as any).page_boxes_enabled ?? true,
     page_buildbox_enabled: (data as any).page_buildbox_enabled ?? true,
     page_flavors_enabled: (data as any).page_flavors_enabled ?? true,
+    page_products_enabled: (data as any).page_products_enabled ?? true,
     page_contact_enabled: (data as any).page_contact_enabled ?? true,
   };
 }
@@ -286,6 +287,31 @@ export async function fetchProducts() {
     .order("sort_order");
   if (error) throw error;
   return (data ?? []).map((p) => ({ ...p, price: Number(p.price) })) as Product[];
+}
+
+export type ProjectItem = {
+  id: string;
+  slug: string;
+  name_en: string;
+  name_ar: string | null;
+  description_en: string | null;
+  description_ar: string | null;
+  image_url: string | null;
+  price: number;
+  link_url: string | null;
+  is_active: boolean;
+  is_best_seller: boolean;
+  sort_order: number;
+};
+
+export async function fetchProjects() {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) throw error;
+  return (data ?? []).map((p) => ({ ...p, price: Number(p.price) })) as ProjectItem[];
 }
 
 export async function fetchProductBySlug(slug: string) {
