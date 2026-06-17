@@ -63,9 +63,9 @@ function BoxesPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {allBoxes.map((b) => {
-                const range = priceRanges[b.id];
-                const lowestFlavorPrice = b.type === "byo" ? (range?.min ?? 0) : 0;
+                const lowestFlavorPrice = b.type === "byo" ? (priceRanges[b.id]?.min ?? 0) : 0;
                 const startingPrice = lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0;
+                const fixedPrice = b.type === "fixed" ? priceRanges[b.id]?.fixedPrice : undefined;
                 return (
                   <BoxCard
                     key={b.id}
@@ -73,7 +73,7 @@ function BoxesPage() {
                     locale={locale}
                     t={t}
                     startingPrice={startingPrice}
-                    fixedPrice={range?.fixedPrice}
+                    fixedPrice={fixedPrice}
                   />
                 );
               })}
