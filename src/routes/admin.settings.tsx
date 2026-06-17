@@ -249,6 +249,10 @@ function SettingsAdmin() {
           announcement_enabled: form.announcement_enabled,
           announcement_text_en: form.announcement_text_en,
           announcement_text_ar: form.announcement_text_ar,
+          page_boxes_enabled:    form.page_boxes_enabled,
+          page_buildbox_enabled: form.page_buildbox_enabled,
+          page_flavors_enabled:  form.page_flavors_enabled,
+          page_contact_enabled:  form.page_contact_enabled,
           // Telegram
           telegram_bot_token: tgToken.trim() || null,
           telegram_chat_id:   tgChatId.trim() || null,
@@ -358,6 +362,46 @@ function SettingsAdmin() {
           <Input label="Delivery fee (EGP)" value={String(form.delivery_fee)} onChange={(v) => set("delivery_fee", Number(v) || 0)} type="number" />
           <Input label="Free delivery threshold (EGP)" value={String(form.free_shipping_threshold)} onChange={(v) => set("free_shipping_threshold", Number(v) || 0)} type="number" />
         </div>
+      </Section>
+
+      {/* ── Page Visibility ──────────────────────────────────────────── */}
+      <Section
+        title="Page Visibility"
+        description="Toggle which pages appear in the storefront navigation. Disabling a page hides it from the menu — the URL still works if someone has a direct link."
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Boxes page</p>
+              <p className="text-xs text-muted-foreground">/boxes</p>
+            </div>
+            <Toggle label="" checked={form.page_boxes_enabled} onChange={(v) => set("page_boxes_enabled", v)} />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Build a Box page</p>
+              <p className="text-xs text-muted-foreground">/buildbox</p>
+            </div>
+            <Toggle label="" checked={form.page_buildbox_enabled} onChange={(v) => set("page_buildbox_enabled", v)} />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Flavors page</p>
+              <p className="text-xs text-muted-foreground">/flavors</p>
+            </div>
+            <Toggle label="" checked={form.page_flavors_enabled} onChange={(v) => set("page_flavors_enabled", v)} />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Contact section</p>
+              <p className="text-xs text-muted-foreground">/#contact</p>
+            </div>
+            <Toggle label="" checked={form.page_contact_enabled} onChange={(v) => set("page_contact_enabled", v)} />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Changes take effect immediately after saving — no rebuild required.
+        </p>
       </Section>
 
       {/* ── Telegram Notifications ───────────────────────────────────── */}

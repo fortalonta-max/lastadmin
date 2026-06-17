@@ -21,6 +21,7 @@ import {
   Share2,
   CalendarX2,
   BarChart2,
+  FolderOpen,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -162,6 +163,7 @@ function AdminShell() {
     { to: "/admin/boxes", label: t("admin.nav.boxes"), icon: Package },
     { to: "/admin/flavors", label: t("admin.nav.flavors"), icon: Cookie },
     { to: "/admin/products", label: t("admin.nav.products"), icon: ShoppingCart },
+    { to: "/admin/projects", label: t("admin.nav.projects"), icon: FolderOpen },
     { to: "/admin/coupons", label: t("admin.nav.coupons"), icon: Tag },
     { to: "/admin/reviews", label: t("admin.nav.reviews"), icon: Star },
     { to: "/admin/faqs", label: t("admin.nav.faqs"), icon: HelpCircle },

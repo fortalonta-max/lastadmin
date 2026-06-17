@@ -157,12 +157,12 @@ export function SiteHeader() {
   });
 
   const links = [
-    { to: "/", label: t("nav.home") },
-    { to: "/boxes", label: t("nav.boxes") },
-    { to: "/buildbox", label: t("nav.buildbox") },
-    { to: "/flavors", label: t("nav.flavors") },
-    { to: "/#contact", label: t("nav.contact") },
-  ];
+    { to: "/", label: t("nav.home"), enabled: true },
+    { to: "/boxes", label: t("nav.boxes"), enabled: settings?.page_boxes_enabled ?? true },
+    { to: "/buildbox", label: t("nav.buildbox"), enabled: settings?.page_buildbox_enabled ?? true },
+    { to: "/flavors", label: t("nav.flavors"), enabled: settings?.page_flavors_enabled ?? true },
+    { to: "/#contact", label: t("nav.contact"), enabled: settings?.page_contact_enabled ?? true },
+  ].filter((l) => l.enabled);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-xl">

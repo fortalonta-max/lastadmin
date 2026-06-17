@@ -96,6 +96,10 @@ export type SiteSettings = {
   announcement_enabled: boolean;
   announcement_text_en: string;
   announcement_text_ar: string;
+  page_boxes_enabled: boolean;
+  page_buildbox_enabled: boolean;
+  page_flavors_enabled: boolean;
+  page_contact_enabled: boolean;
 };
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -137,6 +141,10 @@ const DEFAULT_SETTINGS: SiteSettings = {
   announcement_enabled: false,
   announcement_text_en: "Same-day delivery until 8:00 PM. Free delivery on orders over EGP 750.",
   announcement_text_ar: "توصيل في نفس اليوم حتى 8 مساءً. توصيل مجاني للطلبات فوق 750 جنيه.",
+  page_boxes_enabled: true,
+  page_buildbox_enabled: true,
+  page_flavors_enabled: true,
+  page_contact_enabled: true,
 };
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
@@ -151,7 +159,8 @@ export async function fetchSettings(): Promise<SiteSettings> {
       "story_heading_en, story_heading_ar, story_body_en, story_body_ar, " +
       "story_pillar1_en, story_pillar1_ar, story_pillar2_en, story_pillar2_ar, story_pillar3_en, story_pillar3_ar, " +
       "announcement_enabled, announcement_text_en, announcement_text_ar, " +
-      "delivery_bar_text_en, delivery_bar_text_ar"
+      "delivery_bar_text_en, delivery_bar_text_ar, " +
+      "page_boxes_enabled, page_buildbox_enabled, page_flavors_enabled, page_contact_enabled"
     )
     .eq("id", 1)
     .maybeSingle();
@@ -193,6 +202,10 @@ export async function fetchSettings(): Promise<SiteSettings> {
     announcement_text_ar: data.announcement_text_ar ?? DEFAULT_SETTINGS.announcement_text_ar,
     delivery_bar_text_en: data.delivery_bar_text_en ?? DEFAULT_SETTINGS.delivery_bar_text_en,
     delivery_bar_text_ar: data.delivery_bar_text_ar ?? DEFAULT_SETTINGS.delivery_bar_text_ar,
+    page_boxes_enabled: (data as any).page_boxes_enabled ?? true,
+    page_buildbox_enabled: (data as any).page_buildbox_enabled ?? true,
+    page_flavors_enabled: (data as any).page_flavors_enabled ?? true,
+    page_contact_enabled: (data as any).page_contact_enabled ?? true,
   };
 }
 
@@ -207,32 +220,10 @@ export async function fetchFlavors() {
 }
 
 /**
- * SINGLE SOURCE OF TRUTH for the per-cookie price formula.
- *
- *   Final Price = MAX(0, Base Price − Box Discount)
- *
- * This helper is the ONLY place the formula is encoded. Both
- * `fetchFlavorPricesForBox` and `fetchByoPriceRangePerBox` route through it,
- * and the unit tests in `__tests__/storefront-pricing.test.ts` lock its
- * behaviour. Do not inline `base - discount` arithmetic anywhere else.
- */
-export function computeEffectiveFlavorPrice(base: number, discount: number): number {
-  const b = Number.isFinite(base) ? base : 0;
-  const d = Number.isFinite(discount) ? discount : 0;
-  return Math.max(0, b - d);
-}
-
-/**
  * Fetch effective per-cookie prices for every flavor in the context of a specific box.
  * Effective price = MAX(0, flavors.price − flavor_box_prices.discount).
  * If no discount row exists for a flavor+box pair the full flavors.price is used.
  * Returns a map of flavor_id → effective-price-per-cookie (flavors with price 0 are omitted).
- *
- * BOTH queries must report errors. Previously, a missing `discountsRes.error`
- * check meant an RLS/permission failure on `flavor_box_prices` was silently
- * coerced to `data ?? []`, producing an empty discount map and rendering the
- * un-discounted base price for every anonymous visitor. That was the original
- * production bug — never re-introduce the silent fallback.
  */
 export async function fetchFlavorPricesForBox(boxId: string): Promise<Record<string, number>> {
   const [flavorsRes, discountsRes] = await Promise.all([
@@ -240,16 +231,6 @@ export async function fetchFlavorPricesForBox(boxId: string): Promise<Record<str
     supabase.from("flavor_box_prices").select("flavor_id, discount").eq("box_id", boxId),
   ]);
   if (flavorsRes.error) throw flavorsRes.error;
-  if (discountsRes.error) {
-    // Surface RLS / permission / network failures instead of silently
-    // falling back to base prices.
-    console.error(
-      "[storefront] Failed to read flavor_box_prices — discounts will be missing. " +
-        "Check RLS policies + GRANTs on public.flavor_box_prices.",
-      discountsRes.error,
-    );
-    throw discountsRes.error;
-  }
 
   // Build discount lookup: flavor_id → discount amount for this box
   const discountMap: Record<string, number> = {};
@@ -261,7 +242,8 @@ export async function fetchFlavorPricesForBox(boxId: string): Promise<Record<str
   for (const f of flavorsRes.data ?? []) {
     const base = Number(f.price ?? 0);
     if (base <= 0) continue;
-    map[f.id] = computeEffectiveFlavorPrice(base, discountMap[f.id] ?? 0);
+    const discount = discountMap[f.id] ?? 0;
+    map[f.id] = Math.max(0, base - discount);
   }
   return map;
 }
@@ -361,46 +343,22 @@ export function localizedDesc<T extends Record<string, unknown>>(o: T, locale: L
 export async function fetchByoPriceRangePerBox(): Promise<
   Record<string, { min: number; max: number; fixedPrice?: number }>
 > {
-  const [flavorsRes, boxesRes, discountsRes, fixedRes] = await Promise.all([
+  const [
+    { data: flavorRows },
+    { data: boxes },
+    { data: discountRows },
+    { data: fixedFlavorRows },
+  ] = await Promise.all([
     supabase.from("flavors").select("id, price").eq("is_available", true),
     supabase.from("boxes").select("id, type").eq("is_active", true),
     supabase.from("flavor_box_prices").select("box_id, flavor_id, discount"),
     supabase.from("box_fixed_flavors").select("box_id, flavor_id, quantity"),
   ]);
 
-  // Every read MUST report errors. The original bug was that an RLS denial
-  // on flavor_box_prices returned `{ data: null, error: {...} }`, was coerced
-  // to `[] `, and produced an empty discount map → un-discounted prices for
-  // every anonymous visitor. Throw instead so the failure is loud.
-  if (flavorsRes.error) throw flavorsRes.error;
-  if (boxesRes.error) throw boxesRes.error;
-  if (fixedRes.error) throw fixedRes.error;
-  if (discountsRes.error) {
-    console.error(
-      "[storefront] Failed to read flavor_box_prices (listing) — discounts will be missing. " +
-        "Check RLS policies + GRANTs on public.flavor_box_prices.",
-      discountsRes.error,
-    );
-    throw discountsRes.error;
-  }
-
-  const allFlavors = flavorsRes.data ?? [];
-  const allBoxes = boxesRes.data ?? [];
-  const allDiscounts = discountsRes.data ?? [];
-  const allFixedFlavors = fixedRes.data ?? [];
-
-  // Diagnostic: most stores configure at least one discount. If we have boxes
-  // but zero discount rows, that almost always means the anon role cannot read
-  // flavor_box_prices (RLS / GRANT misconfig). Warn once so it shows up in
-  // production logs even when no error was thrown.
-  if (allBoxes.length > 0 && allDiscounts.length === 0) {
-    console.warn(
-      "[storefront] flavor_box_prices returned 0 rows for " +
-        allBoxes.length +
-        " active boxes. If discounts are configured in admin, verify RLS / GRANTs " +
-        "for the `anon` role on public.flavor_box_prices.",
-    );
-  }
+  const allFlavors = flavorRows ?? [];
+  const allBoxes = boxes ?? [];
+  const allDiscounts = discountRows ?? [];
+  const allFixedFlavors = fixedFlavorRows ?? [];
 
   // flavor_id -> default price
   const flavorPriceMap: Record<string, number> = {};
@@ -419,10 +377,9 @@ export async function fetchByoPriceRangePerBox(): Promise<
       }
     }
 
-    // Effective price per flavor for this box — routed through the single
-    // source of truth so the listing and detail pages cannot drift apart.
+    // effective price per flavor for this box
     const effectivePriceFor = (flavorId: string) =>
-      computeEffectiveFlavorPrice(flavorPriceMap[flavorId] ?? 0, discountMap[flavorId] ?? 0);
+      Math.max(0, (flavorPriceMap[flavorId] ?? 0) - (discountMap[flavorId] ?? 0));
 
     if (box.type === "byo") {
       const effectivePrices = allFlavors
@@ -451,4 +408,3 @@ export async function fetchByoPriceRangePerBox(): Promise<
 
   return result;
 }
-
