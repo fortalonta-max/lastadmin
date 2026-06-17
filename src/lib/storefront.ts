@@ -299,6 +299,7 @@ export type ProjectItem = {
   image_url: string | null;
   price: number;
   link_url: string | null;
+  product_type: "external" | "internal";
   is_active: boolean;
   is_best_seller: boolean;
   sort_order: number;
@@ -312,6 +313,18 @@ export async function fetchProjects() {
     .order("sort_order");
   if (error) throw error;
   return (data ?? []).map((p) => ({ ...p, price: Number(p.price) })) as ProjectItem[];
+}
+
+export async function fetchProjectBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { ...data, price: Number(data.price) } as ProjectItem;
 }
 
 export async function fetchProductBySlug(slug: string) {

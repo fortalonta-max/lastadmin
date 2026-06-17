@@ -1,14 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { Badge } from "@/components/brand-badge";
 import { useI18n } from "@/lib/i18n";
-import {
-  fetchProductBySlug,
-  localizedName,
-  localizedDesc,
-} from "@/lib/storefront";
+import { fetchProjectBySlug, localizedName, localizedDesc } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/products/$slug")({
@@ -26,8 +22,8 @@ function ProductDetail() {
   const { t, locale } = useI18n();
 
   const { data: product, isLoading } = useQuery({
-    queryKey: ["product", slug],
-    queryFn: () => fetchProductBySlug(slug),
+    queryKey: ["project", slug],
+    queryFn: () => fetchProjectBySlug(slug),
   });
 
   if (isLoading) {
@@ -37,6 +33,7 @@ function ProductDetail() {
       </Shell>
     );
   }
+
   if (!product) {
     return (
       <Shell>
@@ -44,8 +41,6 @@ function ProductDetail() {
       </Shell>
     );
   }
-
-  const assignedFlavors = product.product_flavors ?? [];
 
   return (
     <Shell>
@@ -57,6 +52,7 @@ function ProductDetail() {
       </Link>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-[5fr_7fr]">
+        {/* Left: image */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div
             className="aspect-square w-full overflow-hidden rounded-3xl shadow-[var(--shadow-card)]"
@@ -71,58 +67,32 @@ function ProductDetail() {
               <Badge variant="pink">{t("box.best_seller")}</Badge>
             )}
           </div>
-          <h1 className="mt-3 font-display text-4xl">{localizedName(product, locale)}</h1>
-          {product.description_en && (
-            <p className="mt-2 text-muted-foreground">{localizedDesc(product, locale)}</p>
-          )}
-          <p className="mt-4 font-display text-3xl">{formatCurrency(product.price)}</p>
         </div>
 
-        <div>
-          {assignedFlavors.length > 0 ? (
-            <div>
-              <h2 className="mb-4 font-display text-2xl">{t("product.flavors_title")}</h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {assignedFlavors
-                  .sort((a, b) => a.sort_order - b.sort_order)
-                  .map((pf) => {
-                    const f = pf.flavors;
-                    return (
-                      <div
-                        key={pf.flavor_id}
-                        className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-3"
-                      >
-                        <div
-                          className="h-16 w-16 shrink-0 rounded-xl"
-                          style={{
-                            background: f.image_url
-                              ? `url(${f.image_url}) center/cover`
-                              : "var(--gradient-pink-blue)",
-                          }}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <p className="truncate font-semibold">{localizedName(f, locale)}</p>
-                            {f.is_limited_edition && (
-                              <Badge variant="gold">{t("box.limited")}</Badge>
-                            )}
-                            {f.is_out_of_stock && (
-                              <Badge variant="destructive">{t("box.out_of_stock")}</Badge>
-                            )}
-                          </div>
-                          {f.description_en && (
-                            <p className="line-clamp-2 text-xs text-muted-foreground">
-                              {localizedDesc(f, locale)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">{t("product.no_flavors")}</p>
+        {/* Right: details */}
+        <div className="flex flex-col gap-5">
+          <div>
+            <h1 className="font-display text-4xl">{localizedName(product, locale)}</h1>
+            {product.description_en && (
+              <p className="mt-3 text-muted-foreground leading-relaxed">
+                {localizedDesc(product, locale)}
+              </p>
+            )}
+          </div>
+
+          {product.price > 0 && (
+            <p className="font-display text-3xl">{formatCurrency(product.price)}</p>
+          )}
+
+          {product.link_url && (
+            <a
+              href={product.link_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex w-fit items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              View product <ExternalLink className="h-4 w-4" />
+            </a>
           )}
         </div>
       </div>

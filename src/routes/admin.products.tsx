@@ -22,6 +22,7 @@ type Product = {
   image_url: string | null;
   price: number;
   link_url: string | null;
+  product_type: "external" | "internal";
   is_active: boolean;
   is_best_seller: boolean;
   sort_order: number;
@@ -73,7 +74,7 @@ function ProductsAdmin() {
         <h1 className="font-display text-3xl">Products</h1>
         <button
           onClick={() =>
-            setEditing({ is_active: true, is_best_seller: false, price: 0, sort_order: products.length + 1 })
+            setEditing({ is_active: true, is_best_seller: false, price: 0, product_type: "external", sort_order: products.length + 1 })
           }
           className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
         >
@@ -104,13 +105,16 @@ function ProductsAdmin() {
                 <p className="text-xs text-muted-foreground">{formatCurrency(Number(p.price))}</p>
               )}
               <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
+                <span className={`rounded px-1.5 py-0.5 ${p.product_type === "internal" ? "bg-primary/10 text-primary" : "bg-muted"}`}>
+                  {p.product_type === "internal" ? "internal page" : "external link"}
+                </span>
                 {!p.is_active && (
                   <span className="rounded bg-muted px-1.5 py-0.5">hidden</span>
                 )}
                 {p.is_best_seller && (
                   <span className="rounded bg-[var(--pink)] px-1.5 py-0.5">featured</span>
                 )}
-                {p.link_url && (
+                {p.product_type === "external" && p.link_url && (
                   <a
                     href={p.link_url}
                     target="_blank"
@@ -165,10 +169,13 @@ function ProductEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [p, setP] = useState<Partial<Product>>(product);
+  const [p, setP] = useState<Partial<Product>>({ product_type: "external", ...product });
 
   async function save() {
     if (!p.name_en?.trim()) return toast.error("Name (EN) is required");
+    if (p.product_type === "external" && !p.link_url?.trim()) {
+      return toast.error("External link URL is required for external products");
+    }
 
     const payload = {
       slug: (p.slug ?? "").trim() || p.name_en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
@@ -178,7 +185,8 @@ function ProductEditor({
       description_ar: p.description_ar?.trim() || null,
       image_url: p.image_url ?? null,
       price: Number(p.price ?? 0),
-      link_url: p.link_url?.trim() || null,
+      product_type: p.product_type ?? "external",
+      link_url: p.product_type === "external" ? (p.link_url?.trim() || null) : null,
       is_active: p.is_active ?? true,
       is_best_seller: p.is_best_seller ?? false,
       sort_order: Number(p.sort_order ?? 0),
@@ -203,7 +211,31 @@ function ProductEditor({
           {product.id ? "Edit product" : "New product"}
         </h2>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Product type selector */}
+          <div>
+            <p className="mb-2 text-sm font-semibold">Product type</p>
+            <div className="grid grid-cols-2 gap-2">
+              {(["external", "internal"] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setP({ ...p, product_type: type })}
+                  className={`rounded-xl border-2 px-4 py-3 text-left transition-colors ${
+                    p.product_type === type
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border bg-background hover:bg-muted/50"
+                  }`}
+                >
+                  <p className="text-sm font-semibold capitalize">{type === "external" ? "External link" : "Internal page"}</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {type === "external" ? "Opens an external URL" : "Has its own page at /products/slug"}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <ImageUpload
             value={p.image_url ?? null}
             onChange={(url) => setP({ ...p, image_url: url })}
@@ -225,12 +257,15 @@ function ProductEditor({
             <Input label="Sort order" type="number" value={String(p.sort_order ?? 0)} onChange={(v) => setP({ ...p, sort_order: Number(v) })} />
           </div>
 
-          <Input
-            label="External link (optional)"
-            value={p.link_url ?? ""}
-            onChange={(v) => setP({ ...p, link_url: v })}
-            placeholder="https://…"
-          />
+          {p.product_type === "external" && (
+            <Input
+              label="External link URL"
+              value={p.link_url ?? ""}
+              onChange={(v) => setP({ ...p, link_url: v })}
+              placeholder="https://…"
+              required
+            />
+          )}
 
           <div className="grid grid-cols-2 gap-2 text-sm">
             <Toggle label="Active (visible to customers)" checked={p.is_active ?? true} onChange={(v) => setP({ ...p, is_active: v })} />
