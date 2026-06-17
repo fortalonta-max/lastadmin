@@ -7,12 +7,24 @@ import { useI18n } from "@/lib/i18n";
 import { fetchFlavors, localizedName, localizedDesc, type Flavor } from "@/lib/storefront";
 
 export const Route = createFileRoute("/flavors")({
-  head: () => ({
-    meta: [
-      { title: "Cookie Flavors — NYC Cookies" },
-      { name: "description", content: "All NYC Cookies flavors — classic chocolate chip, triple chocolate, red velvet, Lotus Biscoff, Nutella, Oreo, and more." },
-    ],
-  }),
+  head: () => {
+    const ogImage = (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    return {
+      meta: [
+        { title: "Cookie Flavors — Leen Bakery" },
+        { name: "description", content: "All Leen Bakery cookie flavors — classic chocolate chip, triple chocolate, red velvet, Lotus Biscoff, Nutella, Oreo, and more." },
+        { property: "og:title", content: "Cookie Flavors — Leen Bakery" },
+        { property: "og:description", content: "Explore all our flavors — chocolate chip, Nutella, Oreo, Lotus Biscoff & more. Each cookie hand-baked fresh." },
+        { property: "og:type", content: "website" },
+        ...(ogImage ? [
+          { property: "og:image", content: ogImage },
+          { property: "og:image:width", content: "1200" },
+          { property: "og:image:height", content: "630" },
+          { name: "twitter:image", content: ogImage },
+        ] : []),
+      ],
+    };
+  },
   component: FlavorsPage,
 });
 

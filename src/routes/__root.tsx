@@ -80,7 +80,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
+  head: () => {
+    const ogImage = (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    return {
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -89,10 +91,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "description",
         content: "Hand-baked NYC-style cookies by Leen Bakery. Build your own box, mix any flavors, delivered fresh.",
       },
+      { property: "og:site_name", content: "Leen Bakery" },
       { property: "og:title", content: "Leen Bakery" },
       { property: "og:description", content: "Build your own box. Mix any flavors. Delivered fresh." },
       { property: "og:type", content: "website" },
+      ...(ogImage ? [
+        { property: "og:image", content: ogImage },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: "Leen Bakery — NYC-style cookies" },
+      ] : []),
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Leen Bakery" },
+      { name: "twitter:description", content: "Build your own box. Mix any flavors. Delivered fresh." },
+      ...(ogImage ? [{ name: "twitter:image", content: ogImage }] : []),
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -101,7 +113,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap",
       },
     ],
-  }),
+  }; },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,

@@ -8,12 +8,24 @@ import { fetchProjects, localizedName, localizedDesc } from "@/lib/storefront";
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/products/")({
-  head: () => ({
-    meta: [
-      { title: "All Products — NYC Cookies" },
-      { name: "description", content: "Browse all NYC Cookies products." },
-    ],
-  }),
+  head: () => {
+    const ogImage = (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    return {
+      meta: [
+        { title: "All Products — Leen Bakery" },
+        { name: "description", content: "Browse all Leen Bakery products — gifts, bundles, and more." },
+        { property: "og:title", content: "All Products — Leen Bakery" },
+        { property: "og:description", content: "Browse all Leen Bakery products — gifts, bundles, and more." },
+        { property: "og:type", content: "website" },
+        ...(ogImage ? [
+          { property: "og:image", content: ogImage },
+          { property: "og:image:width", content: "1200" },
+          { property: "og:image:height", content: "630" },
+          { name: "twitter:image", content: ogImage },
+        ] : []),
+      ],
+    };
+  },
   component: ProductsPage,
 });
 

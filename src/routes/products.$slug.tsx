@@ -8,12 +8,40 @@ import { fetchProjectBySlug, localizedName, localizedDesc } from "@/lib/storefro
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/products/$slug")({
-  head: ({ params }) => ({
-    meta: [
-      { title: `${params.slug.replace(/-/g, " ")} — NYC Cookies` },
-      { name: "description", content: "NYC Cookies product." },
-    ],
-  }),
+  loader: async ({ params, context }) => {
+    try {
+      const product = await (context as { queryClient: { ensureQueryData: (o: { queryKey: unknown[]; queryFn: () => unknown }) => Promise<unknown> } }).queryClient.ensureQueryData({
+        queryKey: ["project", params.slug],
+        queryFn: () => fetchProjectBySlug(params.slug),
+      });
+      return { product: product as Awaited<ReturnType<typeof fetchProjectBySlug>> };
+    } catch {
+      return { product: null };
+    }
+  },
+  head: ({ params, loaderData }) => {
+    const product = loaderData?.product;
+    const name = product?.name_en ?? params.slug.replace(/-/g, " ");
+    const desc = product?.description_en ?? "Leen Bakery product.";
+    const img = product?.image_url ?? (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    return {
+      meta: [
+        { title: `${name} — Leen Bakery` },
+        { name: "description", content: desc },
+        { property: "og:title", content: name },
+        { property: "og:description", content: desc },
+        { property: "og:type", content: "product" },
+        ...(img ? [
+          { property: "og:image", content: img },
+          { property: "og:image:width", content: "1200" },
+          { property: "og:image:height", content: "630" },
+          { property: "og:image:alt", content: name },
+          { name: "twitter:card", content: "summary_large_image" },
+          { name: "twitter:image", content: img },
+        ] : []),
+      ],
+    };
+  },
   component: ProductDetail,
 });
 

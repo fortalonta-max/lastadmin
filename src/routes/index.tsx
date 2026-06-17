@@ -16,21 +16,28 @@ import { formatCurrency } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Leen Bakery — Build your own box of NYC-style cookies" },
-      {
-        name: "description",
-        content:
-          "Hand-baked New York-style cookies by Leen Bakery, delivered fresh. Build your own box from 9+ flavors.",
-      },
-      { property: "og:title", content: "Leen Bakery — Build your own cookie box" },
-      {
-        property: "og:description",
-        content: "Thick, gooey, NYC-style. Pick your size, mix any flavors.",
-      },
-    ],
-  }),
+  head: () => {
+    const ogImage = (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    return {
+      meta: [
+        { title: "Leen Bakery — Build your own box of NYC-style cookies" },
+        {
+          name: "description",
+          content: "Hand-baked New York-style cookies by Leen Bakery, delivered fresh. Build your own box from 9+ flavors.",
+        },
+        { property: "og:title", content: "Leen Bakery — Build your own cookie box" },
+        { property: "og:description", content: "Thick, gooey, NYC-style. Pick your size, mix any flavors." },
+        { property: "og:type", content: "website" },
+        ...(ogImage ? [
+          { property: "og:image", content: ogImage },
+          { property: "og:image:width", content: "1200" },
+          { property: "og:image:height", content: "630" },
+          { property: "og:image:alt", content: "Leen Bakery cookies" },
+          { name: "twitter:image", content: ogImage },
+        ] : []),
+      ],
+    };
+  },
   component: Home,
 });
 

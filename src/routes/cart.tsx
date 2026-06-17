@@ -7,7 +7,12 @@ import { useI18n } from "@/lib/i18n";
 import { fetchSettings } from "@/lib/storefront";
 
 export const Route = createFileRoute("/cart")({
-  head: () => ({ meta: [{ title: "Cart — Leen Bakery" }] }),
+  head: () => ({
+    meta: [
+      { title: "Cart — Leen Bakery" },
+      { name: "robots", content: "noindex,nofollow" },
+    ],
+  }),
   component: CartPage,
 });
 

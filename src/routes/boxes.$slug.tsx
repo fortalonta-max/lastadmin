@@ -19,12 +19,40 @@ import { trackPixel } from "@/lib/meta-pixel";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/boxes/$slug")({
-  head: ({ params }) => ({
-    meta: [
-      { title: `${params.slug.replace(/-/g, " ")} — NYC Cookies` },
-      { name: "description", content: "Customize your NYC Cookies box with any flavors." },
-    ],
-  }),
+  loader: async ({ params, context }) => {
+    try {
+      const box = await (context as { queryClient: { ensureQueryData: (o: { queryKey: unknown[]; queryFn: () => unknown }) => Promise<unknown> } }).queryClient.ensureQueryData({
+        queryKey: ["box", params.slug],
+        queryFn: () => fetchBoxBySlug(params.slug),
+      });
+      return { box: box as Awaited<ReturnType<typeof fetchBoxBySlug>> };
+    } catch {
+      return { box: null };
+    }
+  },
+  head: ({ params, loaderData }) => {
+    const box = loaderData?.box;
+    const name = box?.name_en ?? params.slug.replace(/-/g, " ");
+    const desc = box?.description_en ?? "Customize your Leen Bakery cookie box with any flavors.";
+    const img = box?.image_url ?? (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    return {
+      meta: [
+        { title: `${name} — Leen Bakery` },
+        { name: "description", content: desc },
+        { property: "og:title", content: name },
+        { property: "og:description", content: desc },
+        { property: "og:type", content: "product" },
+        ...(img ? [
+          { property: "og:image", content: img },
+          { property: "og:image:width", content: "1200" },
+          { property: "og:image:height", content: "630" },
+          { property: "og:image:alt", content: name },
+          { name: "twitter:card", content: "summary_large_image" },
+          { name: "twitter:image", content: img },
+        ] : []),
+      ],
+    };
+  },
   component: BoxDetail,
 });
 

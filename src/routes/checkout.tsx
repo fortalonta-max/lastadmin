@@ -17,7 +17,12 @@ import { CalendarIcon, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/checkout")({
-  head: () => ({ meta: [{ title: "Checkout — Leen Bakery" }] }),
+  head: () => ({
+    meta: [
+      { title: "Checkout — Leen Bakery" },
+      { name: "robots", content: "noindex,nofollow" },
+    ],
+  }),
   component: CheckoutPage,
 });
 

@@ -13,14 +13,24 @@ import {
 import { formatCurrency } from "@/lib/cart";
 
 export const Route = createFileRoute("/boxes/")({
-  head: () => ({
-    meta: [
-      { title: "All Boxes — Leen Bakery" },
-      { name: "description", content: "Browse all our cookie boxes — chef-curated picks and build-your-own options." },
-      { property: "og:title", content: "All Boxes — Leen Bakery" },
-      { property: "og:description", content: "Chef's picks and build-your-own cookie boxes." },
-    ],
-  }),
+  head: () => {
+    const ogImage = (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    return {
+      meta: [
+        { title: "All Boxes — Leen Bakery" },
+        { name: "description", content: "Browse all our cookie boxes — chef-curated picks and build-your-own options." },
+        { property: "og:title", content: "All Boxes — Leen Bakery" },
+        { property: "og:description", content: "Chef's picks and build-your-own cookie boxes." },
+        { property: "og:type", content: "website" },
+        ...(ogImage ? [
+          { property: "og:image", content: ogImage },
+          { property: "og:image:width", content: "1200" },
+          { property: "og:image:height", content: "630" },
+          { name: "twitter:image", content: ogImage },
+        ] : []),
+      ],
+    };
+  },
   component: BoxesPage,
 });
 
