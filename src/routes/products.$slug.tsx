@@ -24,6 +24,7 @@ export const Route = createFileRoute("/products/$slug")({
     const name = product?.name_en ?? params.slug.replace(/-/g, " ");
     const desc = product?.description_en ?? "Leen Bakery product.";
     const img = product?.image_url ?? "https://i.postimg.cc/CKV3Zwfg/wmremove-transformed-(8).png";
+    const siteUrl = (import.meta.env.VITE_SITE_URL as string | undefined) ?? "";
     return {
       meta: [
         { title: `${name} — Leen Bakery` },
@@ -31,14 +32,13 @@ export const Route = createFileRoute("/products/$slug")({
         { property: "og:title", content: name },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
-        ...(img ? [
-          { property: "og:image", content: img },
-          { property: "og:image:width", content: "1200" },
-          { property: "og:image:height", content: "630" },
-          { property: "og:image:alt", content: name },
-          { name: "twitter:card", content: "summary_large_image" },
-          { name: "twitter:image", content: img },
-        ] : []),
+        { property: "og:url", content: siteUrl ? `${siteUrl}/products/${params.slug}` : "" },
+        { property: "og:image", content: img },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: name },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:image", content: img },
       ],
     };
   },

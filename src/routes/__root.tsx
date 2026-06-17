@@ -97,6 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   },
   head: ({ loaderData }) => {
     const ogImage = loaderData?.heroImage ?? FALLBACK_OG_IMAGE;
+    const siteUrl = (import.meta.env.VITE_SITE_URL as string | undefined) ?? "";
     return {
       meta: [
         { charSet: "utf-8" },
@@ -110,6 +111,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { property: "og:title", content: "Leen Bakery" },
         { property: "og:description", content: "Build your own box. Mix any flavors. Delivered fresh." },
         { property: "og:type", content: "website" },
+        { property: "og:url", content: siteUrl },
         { property: "og:image", content: ogImage },
         { property: "og:image:width", content: "1200" },
         { property: "og:image:height", content: "630" },

@@ -15,9 +15,14 @@ import {
 import { formatCurrency } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 
+const FALLBACK_OG_IMAGE = "https://i.postimg.cc/CKV3Zwfg/wmremove-transformed-(8).png";
+
 export const Route = createFileRoute("/")({
   head: () => {
-    const ogImage = (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    const ogImage =
+      (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ||
+      FALLBACK_OG_IMAGE;
+    const siteUrl = (import.meta.env.VITE_SITE_URL as string | undefined) ?? "";
     return {
       meta: [
         { title: "Leen Bakery — Build your own box of NYC-style cookies" },
@@ -28,13 +33,12 @@ export const Route = createFileRoute("/")({
         { property: "og:title", content: "Leen Bakery — Build your own cookie box" },
         { property: "og:description", content: "Thick, gooey, NYC-style. Pick your size, mix any flavors." },
         { property: "og:type", content: "website" },
-        ...(ogImage ? [
-          { property: "og:image", content: ogImage },
-          { property: "og:image:width", content: "1200" },
-          { property: "og:image:height", content: "630" },
-          { property: "og:image:alt", content: "Leen Bakery cookies" },
-          { name: "twitter:image", content: ogImage },
-        ] : []),
+        { property: "og:url", content: siteUrl },
+        { property: "og:image", content: ogImage },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: "Leen Bakery cookies" },
+        { name: "twitter:image", content: ogImage },
       ],
     };
   },

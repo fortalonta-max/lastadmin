@@ -35,6 +35,7 @@ export const Route = createFileRoute("/boxes/$slug")({
     const name = box?.name_en ?? params.slug.replace(/-/g, " ");
     const desc = box?.description_en ?? "Customize your Leen Bakery cookie box with any flavors.";
     const img = box?.image_url ?? "https://i.postimg.cc/CKV3Zwfg/wmremove-transformed-(8).png";
+    const siteUrl = (import.meta.env.VITE_SITE_URL as string | undefined) ?? "";
     return {
       meta: [
         { title: `${name} — Leen Bakery` },
@@ -42,14 +43,13 @@ export const Route = createFileRoute("/boxes/$slug")({
         { property: "og:title", content: name },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
-        ...(img ? [
-          { property: "og:image", content: img },
-          { property: "og:image:width", content: "1200" },
-          { property: "og:image:height", content: "630" },
-          { property: "og:image:alt", content: name },
-          { name: "twitter:card", content: "summary_large_image" },
-          { name: "twitter:image", content: img },
-        ] : []),
+        { property: "og:url", content: siteUrl ? `${siteUrl}/boxes/${params.slug}` : "" },
+        { property: "og:image", content: img },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: name },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:image", content: img },
       ],
     };
   },
