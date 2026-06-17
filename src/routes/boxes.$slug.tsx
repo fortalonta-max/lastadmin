@@ -34,7 +34,7 @@ export const Route = createFileRoute("/boxes/$slug")({
     const box = loaderData?.box;
     const name = box?.name_en ?? params.slug.replace(/-/g, " ");
     const desc = box?.description_en ?? "Customize your Leen Bakery cookie box with any flavors.";
-    const img = box?.image_url ?? (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    const img = box?.image_url ?? "https://i.postimg.cc/CKV3Zwfg/wmremove-transformed-(8).png";
     return {
       meta: [
         { title: `${name} — Leen Bakery` },

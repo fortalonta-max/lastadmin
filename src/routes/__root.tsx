@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { fetchSettings } from "@/lib/storefront";
 import { I18nProvider } from "@/lib/i18n";
 import { CartProvider } from "@/lib/cart";
 import { MetaPixelLoader } from "@/components/meta-pixel-loader";
@@ -79,41 +80,54 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+const FALLBACK_OG_IMAGE =
+  "https://i.postimg.cc/CKV3Zwfg/wmremove-transformed-(8).png";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => {
-    const ogImage = (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+  loader: async ({ context }) => {
+    try {
+      const settings = await context.queryClient.ensureQueryData({
+        queryKey: ["public-settings"],
+        queryFn: fetchSettings,
+      });
+      return { heroImage: settings.hero_image_url || FALLBACK_OG_IMAGE };
+    } catch {
+      return { heroImage: FALLBACK_OG_IMAGE };
+    }
+  },
+  head: ({ loaderData }) => {
+    const ogImage = loaderData?.heroImage ?? FALLBACK_OG_IMAGE;
     return {
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Leen Bakery — Fresh-baked NYC-style cookies" },
-      {
-        name: "description",
-        content: "Hand-baked NYC-style cookies by Leen Bakery. Build your own box, mix any flavors, delivered fresh.",
-      },
-      { property: "og:site_name", content: "Leen Bakery" },
-      { property: "og:title", content: "Leen Bakery" },
-      { property: "og:description", content: "Build your own box. Mix any flavors. Delivered fresh." },
-      { property: "og:type", content: "website" },
-      ...(ogImage ? [
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title: "Leen Bakery — Fresh-baked NYC-style cookies" },
+        {
+          name: "description",
+          content: "Hand-baked NYC-style cookies by Leen Bakery. Build your own box, mix any flavors, delivered fresh.",
+        },
+        { property: "og:site_name", content: "Leen Bakery" },
+        { property: "og:title", content: "Leen Bakery" },
+        { property: "og:description", content: "Build your own box. Mix any flavors. Delivered fresh." },
+        { property: "og:type", content: "website" },
         { property: "og:image", content: ogImage },
         { property: "og:image:width", content: "1200" },
         { property: "og:image:height", content: "630" },
         { property: "og:image:alt", content: "Leen Bakery — NYC-style cookies" },
-      ] : []),
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Leen Bakery" },
-      { name: "twitter:description", content: "Build your own box. Mix any flavors. Delivered fresh." },
-      ...(ogImage ? [{ name: "twitter:image", content: ogImage }] : []),
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap",
-      },
-    ],
-  }; },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: "Leen Bakery" },
+        { name: "twitter:description", content: "Build your own box. Mix any flavors. Delivered fresh." },
+        { name: "twitter:image", content: ogImage },
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap",
+        },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,

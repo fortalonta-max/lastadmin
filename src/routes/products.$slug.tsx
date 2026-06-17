@@ -23,7 +23,7 @@ export const Route = createFileRoute("/products/$slug")({
     const product = loaderData?.product;
     const name = product?.name_en ?? params.slug.replace(/-/g, " ");
     const desc = product?.description_en ?? "Leen Bakery product.";
-    const img = product?.image_url ?? (import.meta.env.VITE_OG_IMAGE_URL as string | undefined) ?? "";
+    const img = product?.image_url ?? "https://i.postimg.cc/CKV3Zwfg/wmremove-transformed-(8).png";
     return {
       meta: [
         { title: `${name} — Leen Bakery` },
