@@ -51,12 +51,15 @@ function platformIcon(name: string): string {
 
 function DeliveryBar() {
   const { locale } = useI18n();
-  const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+  const { data: settings, isLoading } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
+
+  if (isLoading || !settings) return null;
 
   const text =
-    (locale === "ar" ? settings?.delivery_bar_text_ar : settings?.delivery_bar_text_en) ||
-    settings?.delivery_bar_text_en ||
-    "Same-day delivery until 8:00 PM  ·  Free delivery on orders over EGP 750";
+    (locale === "ar" ? settings.delivery_bar_text_ar : settings.delivery_bar_text_en) ||
+    settings.delivery_bar_text_en;
+
+  if (!text) return null;
 
   return (
     <div
