@@ -317,33 +317,82 @@ export function localizedDesc<T extends Record<string, unknown>>(o: T, locale: L
 }
 
 /**
- * Fetch the minimum and maximum per-cookie flavor default price.
- * New pricing system: uses flavors.price (universal default price per cookie).
- * Returns a map of box_id → { min, max } where min/max are the cheapest/priciest
- * flavor default prices. Because prices are now universal, all BYO boxes share the
- * same min/max flavor prices; the per-box discount is applied at the component level.
- * Returns a map of box_id → { min, max } populated for every active BYO box.
+ * Fetch per-box effective price ranges for all active boxes, applying per-flavor discounts.
+ *
+ * For BYO boxes:   returns { min, max } of effective per-cookie prices across all available
+ *                  flavors scoped to that box (flavors.price − flavor_box_prices.discount).
+ * For fixed boxes: returns { min:0, max:0, fixedPrice } where fixedPrice is the sum of
+ *                  each preset flavor's effective price × its quantity.
+ *
+ * This is the authoritative source for the listing page — the detail page uses
+ * fetchFlavorPricesForBox() per box which produces the same effective prices.
  */
 export async function fetchByoPriceRangePerBox(): Promise<
-  Record<string, { min: number; max: number }>
+  Record<string, { min: number; max: number; fixedPrice?: number }>
 > {
-  const [{ data: flavorRows }, { data: boxes }] = await Promise.all([
-    supabase.from("flavors").select("price").eq("is_available", true),
-    supabase.from("boxes").select("id").eq("is_active", true).eq("type", "byo"),
+  const [flavorsRes, boxesRes, discountsRes, fixedFlavorsRes] = await Promise.all([
+    supabase.from("flavors").select("id, price").eq("is_available", true),
+    supabase.from("boxes").select("id, type").eq("is_active", true),
+    supabase.from("flavor_box_prices").select("box_id, flavor_id, discount"),
+    supabase.from("box_fixed_flavors").select("box_id, flavor_id, quantity"),
   ]);
 
-  const prices = (flavorRows ?? [])
-    .map((r) => Number(r.price ?? 0))
-    .filter((p) => p > 0);
+  const flavors = flavorsRes.data ?? [];
+  const boxes = boxesRes.data ?? [];
 
-  if (prices.length === 0) return {};
-
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-
-  const result: Record<string, { min: number; max: number }> = {};
-  for (const box of boxes ?? []) {
-    result[box.id] = { min, max };
+  // flavor_id → base price
+  const flavorPriceMap = new Map<string, number>();
+  for (const f of flavors) {
+    flavorPriceMap.set(f.id, Number(f.price ?? 0));
   }
+
+  // "box_id:flavor_id" → discount amount
+  const discountMap = new Map<string, number>();
+  for (const d of discountsRes.data ?? []) {
+    discountMap.set(`${d.box_id}:${d.flavor_id}`, Number(d.discount ?? 0));
+  }
+
+  // box_id → [{flavor_id, quantity}] for fixed boxes
+  const fixedFlavorsMap = new Map<string, Array<{ flavor_id: string; quantity: number }>>();
+  for (const ff of fixedFlavorsRes.data ?? []) {
+    if (!fixedFlavorsMap.has(ff.box_id)) fixedFlavorsMap.set(ff.box_id, []);
+    fixedFlavorsMap.get(ff.box_id)!.push({ flavor_id: ff.flavor_id, quantity: Number(ff.quantity) });
+  }
+
+  const result: Record<string, { min: number; max: number; fixedPrice?: number }> = {};
+
+  for (const box of boxes) {
+    if (box.type === "byo") {
+      // Effective price per cookie for each available flavor in this box
+      const effectivePrices: number[] = [];
+      for (const f of flavors) {
+        const base = Number(f.price ?? 0);
+        if (base <= 0) continue;
+        const discount = discountMap.get(`${box.id}:${f.id}`) ?? 0;
+        const effective = Math.max(0, base - discount);
+        if (effective > 0) effectivePrices.push(effective);
+      }
+      if (effectivePrices.length > 0) {
+        result[box.id] = {
+          min: Math.min(...effectivePrices),
+          max: Math.max(...effectivePrices),
+        };
+      }
+    } else {
+      // Fixed box: sum of (effective price × quantity) for each preset flavor
+      const presets = fixedFlavorsMap.get(box.id) ?? [];
+      const fixedPrice = presets.reduce((sum, bf) => {
+        const base = flavorPriceMap.get(bf.flavor_id) ?? 0;
+        const discount = discountMap.get(`${box.id}:${bf.flavor_id}`) ?? 0;
+        return sum + Math.max(0, base - discount) * bf.quantity;
+      }, 0);
+      result[box.id] = {
+        min: 0,
+        max: 0,
+        ...(fixedPrice > 0 ? { fixedPrice } : {}),
+      };
+    }
+  }
+
   return result;
 }

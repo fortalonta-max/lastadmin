@@ -63,7 +63,8 @@ function BoxesPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {allBoxes.map((b) => {
-                const lowestFlavorPrice = b.type === "byo" ? (priceRanges[b.id]?.min ?? 0) : 0;
+                const range = priceRanges[b.id];
+                const lowestFlavorPrice = b.type === "byo" ? (range?.min ?? 0) : 0;
                 const startingPrice = lowestFlavorPrice > 0 ? lowestFlavorPrice * b.cookie_count : 0;
                 return (
                   <BoxCard
@@ -72,6 +73,7 @@ function BoxesPage() {
                     locale={locale}
                     t={t}
                     startingPrice={startingPrice}
+                    fixedPrice={range?.fixedPrice}
                   />
                 );
               })}
@@ -89,15 +91,20 @@ function BoxCard({
   locale,
   t,
   startingPrice,
+  fixedPrice,
 }: {
   box: Box;
   locale: "en" | "ar";
   t: (key: string) => string;
   startingPrice: number;
+  fixedPrice?: number;
 }) {
   const isByo = b.type === "byo";
-  // If flavor_box_prices has no entries, startingPrice will be 0 — fall back to b.price
-  const displayPrice = isByo ? (startingPrice > 0 ? startingPrice : b.price) : b.price;
+  // BYO: use computed starting price (lowest effective flavor × cookie_count); fallback to legacy box.price.
+  // Fixed: use computed fixedPrice (sum of effective flavor prices); fallback to legacy box.price.
+  const displayPrice = isByo
+    ? (startingPrice > 0 ? startingPrice : b.price)
+    : (fixedPrice && fixedPrice > 0 ? fixedPrice : b.price);
 
   return (
     <Link
