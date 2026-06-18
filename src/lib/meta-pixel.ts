@@ -32,7 +32,13 @@ export function initMetaPixel(pixelId: string | null | undefined) {
   })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
 
   window.fbq?.("init", pixelId);
-  window.fbq?.("track", "PageView");
+  // NOTE: PageView is NOT fired here on init.
+  // The MetaPixelLoader useEffect fires the initial PageView immediately after
+  // calling initMetaPixel, and the router's onResolved subscription fires it
+  // on every subsequent SPA navigation. Firing PageView inside initMetaPixel
+  // AND from the router subscription caused a double PageView on initial load
+  // when the pixel script was already cached in the browser (making fbq
+  // available synchronously).
 
   // noscript fallback for browsers with JavaScript disabled
   const noscript = document.createElement("noscript");

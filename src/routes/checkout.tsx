@@ -108,6 +108,14 @@ function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const orderSubmittedRef = useRef(false);
+  // Stable event ID for this checkout session: generated once per component
+  // mount. Using the same eventId on retry ensures Meta deduplicates the
+  // Purchase event even if a network error causes the user to resubmit.
+  const checkoutEventIdRef = useRef(crypto.randomUUID());
+  // Guard: fire InitiateCheckout only once per checkout page mount, not each
+  // time items.length or subtotal changes (e.g. on cart hydration from
+  // localStorage, which updates subtotal from 0 → actual value).
+  const initiateCheckoutFiredRef = useRef(false);
 
   // Delivery scheduling state
   type DateOption = "today" | "tomorrow" | "other";
@@ -190,7 +198,8 @@ function CheckoutPage() {
   const total = Math.max(0, subtotal - discount + deliveryFee);
 
   useEffect(() => {
-    if (items.length === 0) return;
+    if (items.length === 0 || initiateCheckoutFiredRef.current) return;
+    initiateCheckoutFiredRef.current = true;
     trackPixel("InitiateCheckout", { value: subtotal, currency: "EGP", num_items: items.length });
   }, [items.length, subtotal]);
 
@@ -239,7 +248,7 @@ function CheckoutPage() {
     }
     setSubmitting(true);
     try {
-      const eventId = crypto.randomUUID();
+      const eventId = checkoutEventIdRef.current;
       const res = await submit({
         data: {
           customer: {

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Minus, Plus, ShoppingBag, Check, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -170,17 +170,22 @@ function BoxDetail() {
 
   // ── Pixel ────────────────────────────────────────────────────────────────────
 
+  // Guard: fire ViewContent only once per box slug, not on every React Query
+  // refetch. Without this, background refetches (e.g. on window focus) produce
+  // a new `box` object reference and re-trigger the effect, inflating
+  // ViewContent counts.
+  const viewContentFiredForId = useRef<string | null>(null);
   useEffect(() => {
-    if (box) {
-      trackPixel("ViewContent", {
-        content_name: box.name_en,
-        content_ids: [box.id],
-        content_type: "product",
-        value: box.price,
-        currency: "EGP",
-      });
-    }
-  }, [box]);
+    if (!box || viewContentFiredForId.current === box.id) return;
+    viewContentFiredForId.current = box.id;
+    trackPixel("ViewContent", {
+      content_name: box.name_en,
+      content_ids: [box.id],
+      content_type: "product",
+      value: box.price,
+      currency: "EGP",
+    });
+  }, [box?.id]);
 
   // ── Loading / not-found guards ───────────────────────────────────────────────
 

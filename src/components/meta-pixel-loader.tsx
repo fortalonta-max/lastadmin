@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { initMetaPixel } from "@/lib/meta-pixel";
+import { initMetaPixel, trackPixel } from "@/lib/meta-pixel";
 
 export function MetaPixelLoader() {
   const { data } = useQuery({
@@ -18,7 +18,14 @@ export function MetaPixelLoader() {
   });
 
   useEffect(() => {
-    if (data?.meta_pixel_id) initMetaPixel(data.meta_pixel_id);
+    if (data?.meta_pixel_id) {
+      initMetaPixel(data.meta_pixel_id);
+      // Fire the initial PageView here — after the pixel is initialized —
+      // rather than inside initMetaPixel. This is the single source of truth
+      // for the initial PageView. Subsequent SPA navigations are tracked by
+      // the router.subscribe("onResolved") handler in __root.tsx.
+      trackPixel("PageView");
+    }
   }, [data?.meta_pixel_id]);
 
   return null;
