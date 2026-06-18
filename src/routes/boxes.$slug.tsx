@@ -185,7 +185,7 @@ function BoxDetail() {
       value: box.price,
       currency: "EGP",
     });
-  }, [box?.id]);
+  }, [box]);
 
   // ── Loading / not-found guards ───────────────────────────────────────────────
 
