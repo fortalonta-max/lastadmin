@@ -178,6 +178,7 @@ function BoxDetail() {
   // a new `box` object reference and re-trigger the effect, inflating
   // ViewContent counts.
   const viewContentFiredForId = useRef<string | null>(null);
+  const isAddingToCartRef = useRef(false);
   useEffect(() => {
     if (!box || viewContentFiredForId.current === box.id) return;
     viewContentFiredForId.current = box.id;
@@ -209,7 +210,8 @@ function BoxDetail() {
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
       },
     }).catch((e: unknown) => console.error("[CAPI] ViewContent failed:", e));
-  }, [box]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [box?.id]);
 
   // ── Loading / not-found guards ───────────────────────────────────────────────
 
@@ -252,7 +254,8 @@ function BoxDetail() {
   // ── Add to cart ──────────────────────────────────────────────────────────────
 
   const handleAdd = () => {
-    if (!canAdd) return;
+    if (!canAdd || isAddingToCartRef.current) return;
+    isAddingToCartRef.current = true;
 
     let selectedFlavors: CartFlavor[] = [];
     if (isFixed) {

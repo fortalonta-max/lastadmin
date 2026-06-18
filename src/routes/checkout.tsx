@@ -120,6 +120,7 @@ function CheckoutPage() {
   // time items.length or subtotal changes (e.g. on cart hydration from
   // localStorage, which updates subtotal from 0 → actual value).
   const initiateCheckoutFiredRef = useRef(false);
+  const purchaseGuardRef = useRef(false);
 
   // Delivery scheduling state
   type DateOption = "today" | "tomorrow" | "other";
@@ -202,6 +203,7 @@ function CheckoutPage() {
   const total = Math.max(0, subtotal - discount + deliveryFee);
 
   useEffect(() => {
+    if (!isLoaded) return;
     if (items.length === 0 || initiateCheckoutFiredRef.current) return;
     initiateCheckoutFiredRef.current = true;
 
@@ -224,7 +226,7 @@ function CheckoutPage() {
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
       },
     }).catch((e: unknown) => console.error("[CAPI] InitiateCheckout failed:", e));
-  }, [items.length, subtotal]);
+  }, [isLoaded, items.length, subtotal]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -269,6 +271,9 @@ function CheckoutPage() {
       toast.error("Please select a delivery time");
       return;
     }
+    if (purchaseGuardRef.current) return;
+    purchaseGuardRef.current = true;
+
     setSubmitting(true);
     try {
       const eventId = checkoutEventIdRef.current;
@@ -335,6 +340,7 @@ function CheckoutPage() {
       clear();
       navigate({ to: "/order/$id", params: { id: res.id } });
     } catch (err) {
+      purchaseGuardRef.current = false;
       toast.error(err instanceof Error ? err.message : "Order failed");
     } finally {
       setSubmitting(false);
