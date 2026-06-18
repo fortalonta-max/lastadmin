@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { fireCapiEvent } from "@/lib/capi.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { notifyNewOrder } from "@/lib/telegram";
@@ -250,24 +251,29 @@ export const placeOrder = createServerFn({ method: "POST" })
       console.error("[Telegram] notify failed:", e);
     }
 
-    // Fire Meta Conversion API (best-effort)
+    // Fire Meta Conversions API — Purchase (server-side CAPI)
+    // Uses the shared fireCapiEvent utility which handles logging, API version,
+    // and test_event_code forwarding so events appear in Meta Test Events.
     try {
-      if (settings?.meta_pixel_id && settings?.meta_capi_token) {
-        await sendPurchaseToCapi({
-          pixelId: settings.meta_pixel_id,
-          token: settings.meta_capi_token,
-          testCode: settings.meta_test_event_code ?? undefined,
-          eventId,
-          value: total,
-          phone: data.customer.phone,
-          name: data.customer.name,
-          fbp: data.meta?.fbp,
-          fbc: data.meta?.fbc,
+      const [firstName, ...rest] = data.customer.name.split(" ");
+      await fireCapiEvent({
+        eventName: "Purchase",
+        eventId,
+        userData: {
+          phone:     data.customer.phone,
+          firstName,
+          lastName:  rest.join(" "),
+          fbp:       data.meta?.fbp,
+          fbc:       data.meta?.fbc,
           userAgent: data.meta?.user_agent,
-        });
-      }
+        },
+        customData: {
+          value:    total,
+          currency: "EGP",
+        },
+      });
     } catch (e) {
-      console.error("CAPI Purchase failed:", e);
+      console.error("[CAPI] Purchase event failed:", e);
     }
 
     return {
@@ -277,44 +283,3 @@ export const placeOrder = createServerFn({ method: "POST" })
       whatsapp_number: settings?.whatsapp_number ?? null,
     };
   });
-
-async function sha256(s: string) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s.trim().toLowerCase()));
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function sendPurchaseToCapi(args: {
-  pixelId: string; token: string; testCode?: string; eventId: string;
-  value: number; phone: string; name: string;
-  fbp?: string; fbc?: string; userAgent?: string;
-}) {
-  const phoneNorm = args.phone.replace(/\D/g, "");
-  const [firstName, ...rest] = args.name.split(" ");
-  const lastName = rest.join(" ");
-  const user_data: Record<string, unknown> = {
-    ph: [await sha256(phoneNorm)],
-    fn: [await sha256(firstName || "")],
-    ln: [await sha256(lastName || "")],
-  };
-  if (args.fbp) user_data.fbp = args.fbp;
-  if (args.fbc) user_data.fbc = args.fbc;
-  if (args.userAgent) user_data.client_user_agent = args.userAgent;
-
-  const body = {
-    data: [{
-      event_name: "Purchase",
-      event_time: Math.floor(Date.now() / 1000),
-      action_source: "website",
-      event_id: args.eventId,
-      user_data,
-      custom_data: { currency: "EGP", value: args.value },
-    }],
-    ...(args.testCode ? { test_event_code: args.testCode } : {}),
-  };
-
-  const url = `https://graph.facebook.com/v19.0/${args.pixelId}/events?access_token=${encodeURIComponent(args.token)}`;
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!res.ok) console.error("CAPI error", res.status, await res.text());
-}

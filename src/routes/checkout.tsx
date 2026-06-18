@@ -10,6 +10,7 @@ import { useCart, formatCurrency } from "@/lib/cart";
 import { fetchSettings } from "@/lib/storefront";
 import { placeOrder } from "@/lib/orders.functions";
 import { trackPixel, getPixelCookies } from "@/lib/meta-pixel";
+import { trackCapiEvent } from "@/lib/tracking.functions";
 import { getUtm } from "@/lib/utm";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -98,6 +99,7 @@ function CheckoutPage() {
   const { items, isLoaded, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const submit = useServerFn(placeOrder);
+  const submitTrackCapiEvent = useServerFn(trackCapiEvent);
 
   const { data: settings } = useQuery({ queryKey: ["public-settings"], queryFn: fetchSettings });
   const baseDeliveryFee = Number(settings?.delivery_fee ?? 90);
@@ -112,6 +114,8 @@ function CheckoutPage() {
   // mount. Using the same eventId on retry ensures Meta deduplicates the
   // Purchase event even if a network error causes the user to resubmit.
   const checkoutEventIdRef = useRef(crypto.randomUUID());
+  // Separate stable event_id for InitiateCheckout — Purchase has its own (checkoutEventIdRef).
+  const initiateCheckoutEventIdRef = useRef(crypto.randomUUID());
   // Guard: fire InitiateCheckout only once per checkout page mount, not each
   // time items.length or subtotal changes (e.g. on cart hydration from
   // localStorage, which updates subtotal from 0 → actual value).
@@ -200,7 +204,26 @@ function CheckoutPage() {
   useEffect(() => {
     if (items.length === 0 || initiateCheckoutFiredRef.current) return;
     initiateCheckoutFiredRef.current = true;
-    trackPixel("InitiateCheckout", { value: subtotal, currency: "EGP", num_items: items.length });
+
+    const eventId = initiateCheckoutEventIdRef.current;
+    const { fbp, fbc } = getPixelCookies();
+
+    // Browser pixel (client-side)
+    trackPixel("InitiateCheckout", { value: subtotal, currency: "EGP", num_items: items.length }, eventId);
+
+    // Server-side CAPI — same event_id for deduplication
+    submitTrackCapiEvent({
+      data: {
+        event_name: "InitiateCheckout",
+        event_id:   eventId,
+        value:      subtotal,
+        currency:   "EGP",
+        num_items:  items.length,
+        fbp,
+        fbc,
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+      },
+    }).catch((e: unknown) => console.error("[CAPI] InitiateCheckout failed:", e));
   }, [items.length, subtotal]);
 
   useEffect(() => {

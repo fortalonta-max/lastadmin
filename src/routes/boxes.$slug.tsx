@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Minus, Plus, ShoppingBag, Check, ArrowLeft } from "lucide-react";
@@ -15,7 +16,8 @@ import {
   localizedDesc,
 } from "@/lib/storefront";
 import { useCart, formatCurrency, type CartFlavor } from "@/lib/cart";
-import { trackPixel } from "@/lib/meta-pixel";
+import { trackPixel, getPixelCookies } from "@/lib/meta-pixel";
+import { trackCapiEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/boxes/$slug")({
@@ -61,6 +63,7 @@ function BoxDetail() {
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { add } = useCart();
+  const submitTrackCapiEvent = useServerFn(trackCapiEvent);
 
   // ── Data fetching ────────────────────────────────────────────────────────────
 
@@ -178,13 +181,34 @@ function BoxDetail() {
   useEffect(() => {
     if (!box || viewContentFiredForId.current === box.id) return;
     viewContentFiredForId.current = box.id;
+
+    const eventId = crypto.randomUUID();
+    const { fbp, fbc } = getPixelCookies();
+
+    // Browser pixel (client-side)
     trackPixel("ViewContent", {
       content_name: box.name_en,
       content_ids: [box.id],
       content_type: "product",
       value: box.price,
       currency: "EGP",
-    });
+    }, eventId);
+
+    // Server-side CAPI — same event_id for deduplication
+    submitTrackCapiEvent({
+      data: {
+        event_name:   "ViewContent",
+        event_id:     eventId,
+        value:        box.price,
+        currency:     "EGP",
+        content_ids:  [box.id],
+        content_name: box.name_en,
+        content_type: "product",
+        fbp,
+        fbc,
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+      },
+    }).catch((e: unknown) => console.error("[CAPI] ViewContent failed:", e));
   }, [box]);
 
   // ── Loading / not-found guards ───────────────────────────────────────────────
@@ -258,12 +282,31 @@ function BoxDetail() {
       image_url: box.image_url,
     });
 
+    const addToCartEventId = crypto.randomUUID();
+    const { fbp, fbc } = getPixelCookies();
+
+    // Browser pixel (client-side)
     trackPixel("AddToCart", {
       content_name: box.name_en,
       content_ids: [box.id],
       value: unitPrice,
       currency: "EGP",
-    });
+    }, addToCartEventId);
+
+    // Server-side CAPI — same event_id for deduplication
+    submitTrackCapiEvent({
+      data: {
+        event_name:   "AddToCart",
+        event_id:     addToCartEventId,
+        value:        unitPrice,
+        currency:     "EGP",
+        content_ids:  [box.id],
+        content_name: box.name_en,
+        fbp,
+        fbc,
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+      },
+    }).catch((e: unknown) => console.error("[CAPI] AddToCart failed:", e));
 
     toast.success(t("cta.add_to_cart") + " ✓");
     navigate({ to: "/cart" });
