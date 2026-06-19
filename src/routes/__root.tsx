@@ -156,8 +156,18 @@ function RootComponent() {
 
   useEffect(() => {
     captureUtm();
+    // Skip the FIRST onResolved event, which fires during SSR hydration for the
+    // initial route. MetaPixelLoader.useEffect already owns that initial PageView.
+    // Without this guard, two PageViews fire on every initial page load:
+    //   #1 — router.subscribe("onResolved") catches the hydration navigation
+    //   #2 — MetaPixelLoader fires after the async Supabase pixel-ID fetch
+    let initialHydrationSkipped = false;
     return router.subscribe("onResolved", () => {
       captureUtm();
+      if (!initialHydrationSkipped) {
+        initialHydrationSkipped = true;
+        return; // MetaPixelLoader handles the initial PageView
+      }
       trackPixel("PageView");
     });
   }, [router]);
