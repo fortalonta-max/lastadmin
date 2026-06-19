@@ -3,14 +3,32 @@ declare global {
   interface Window {
     fbq?: (...args: unknown[]) => void;
     _fbq?: unknown;
+    // Normalised (trimmed string) pixel ID — set once, never re-set.
     __fbqLoaded?: string;
   }
 }
 
+// Module-level guard (same-bundle fast path).
+// Catches duplicate calls within the same JS chunk before touching the window,
+// and is immune to the number/string type-coercion issue that can defeat ===.
+const _initializedPixels = new Set<string>();
+
 export function initMetaPixel(pixelId: string | null | undefined) {
   if (typeof window === "undefined" || !pixelId) return;
-  if (window.__fbqLoaded === pixelId) return;
-  window.__fbqLoaded = pixelId;
+
+  // Normalise to string so that a Supabase bigint column returning a JS number
+  // on one call and a string on another never bypasses the strict-equality guard.
+  const id = String(pixelId).trim();
+  if (!id) return;
+
+  // Layer 1 — module-level Set (fast, type-safe, same-bundle).
+  if (_initializedPixels.has(id)) return;
+  _initializedPixels.add(id);
+
+  // Layer 2 — window flag (survives across code-split chunks that each import
+  // this module and therefore start with an empty _initializedPixels Set).
+  if (window.__fbqLoaded === id) return;
+  window.__fbqLoaded = id;
 
   // Standard Facebook pixel snippet
   (function (f: any, b: Document, e: string, v: string) {
@@ -31,7 +49,9 @@ export function initMetaPixel(pixelId: string | null | undefined) {
     s.parentNode?.insertBefore(t, s);
   })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
 
-  window.fbq?.("init", pixelId);
+  // Use the normalised string `id` — avoids fbq internally registering the
+  // same pixel under two different key types (number vs string).
+  window.fbq?.("init", id);
   // NOTE: PageView is NOT fired here on init.
   // The MetaPixelLoader useEffect fires the initial PageView immediately after
   // calling initMetaPixel, and the router's onResolved subscription fires it
@@ -42,7 +62,7 @@ export function initMetaPixel(pixelId: string | null | undefined) {
 
   // noscript fallback for browsers with JavaScript disabled
   const noscript = document.createElement("noscript");
-  noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1" />`;
+  noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1" />`;
   document.body.appendChild(noscript);
 }
 
