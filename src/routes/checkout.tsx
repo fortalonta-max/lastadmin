@@ -209,21 +209,26 @@ function CheckoutPage() {
 
     const eventId = initiateCheckoutEventIdRef.current;
     const { fbp, fbc } = getPixelCookies();
+    // value must be a float for both the browser pixel and CAPI
+    const initiateValue = parseFloat(subtotal.toFixed(2));
 
     // Browser pixel (client-side)
-    trackPixel("InitiateCheckout", { value: subtotal, currency: "EGP", num_items: items.length }, eventId);
+    trackPixel("InitiateCheckout", { value: initiateValue, currency: "EGP", num_items: items.length }, eventId);
 
-    // Server-side CAPI — same event_id for deduplication
+    // Server-side CAPI — same event_id for deduplication.
+    // Pass phone from form state if the user has already filled it in — this
+    // improves Advanced Matching quality without delaying the event fire.
     submitTrackCapiEvent({
       data: {
         event_name: "InitiateCheckout",
         event_id:   eventId,
-        value:      subtotal,
+        value:      initiateValue,
         currency:   "EGP",
         num_items:  items.length,
         fbp,
         fbc,
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+        phone:      form.phone.trim() || undefined,
       },
     }).catch((e: unknown) => console.error("[CAPI] InitiateCheckout failed:", e));
   }, [isLoaded, items.length, subtotal]);
@@ -303,9 +308,10 @@ function CheckoutPage() {
           utm: getUtm(),
         },
       });
+      // value must be a float — toFixed(2) then re-parse guarantees a numeric float
       trackPixel(
         "Purchase",
-        { value: Number(res.total), currency: "EGP", num_items: items.length },
+        { value: parseFloat(Number(res.total).toFixed(2)), currency: "EGP", num_items: items.length },
         eventId,
       );
 

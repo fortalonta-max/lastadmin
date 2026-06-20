@@ -18,6 +18,7 @@ async function sha256Hex(s: string): Promise<string> {
 }
 
 export interface CapiUserData {
+  email?: string;
   phone?: string;
   firstName?: string;
   lastName?: string;
@@ -74,6 +75,8 @@ export async function fireCapiEvent(event: CapiEvent): Promise<void> {
 
   // ── Build user_data ───────────────────────────────────────────────────────
   const user_data: Record<string, unknown> = {};
+  if (event.userData?.email)
+    user_data.em = [await sha256Hex(event.userData.email)];
   if (event.userData?.phone)
     user_data.ph = [await sha256Hex(event.userData.phone.replace(/\D/g, ""))];
   if (event.userData?.firstName)
@@ -86,12 +89,20 @@ export async function fireCapiEvent(event: CapiEvent): Promise<void> {
 
   // ── Build custom_data ─────────────────────────────────────────────────────
   const custom_data: Record<string, unknown> = {};
-  if (event.customData?.currency !== undefined) custom_data.currency     = event.customData.currency;
-  if (event.customData?.value    !== undefined) custom_data.value        = event.customData.value;
-  if (event.customData?.contentIds)             custom_data.content_ids  = event.customData.contentIds;
-  if (event.customData?.contentName)            custom_data.content_name = event.customData.contentName;
-  if (event.customData?.contentType)            custom_data.content_type = event.customData.contentType;
-  if (event.customData?.numItems  !== undefined) custom_data.num_items   = event.customData.numItems;
+  // currency must be a 3-character ISO 4217 string (e.g. "EGP"), normalised to uppercase.
+  if (event.customData?.currency !== undefined)
+    custom_data.currency = event.customData.currency.trim().toUpperCase().slice(0, 3);
+  // value must be a float — use toFixed(2) then re-parse to guarantee a numeric float.
+  if (event.customData?.value !== undefined)
+    custom_data.value = parseFloat(event.customData.value.toFixed(2));
+  if (event.customData?.contentIds)
+    custom_data.content_ids  = event.customData.contentIds;
+  if (event.customData?.contentName)
+    custom_data.content_name = event.customData.contentName;
+  if (event.customData?.contentType)
+    custom_data.content_type = event.customData.contentType;
+  if (event.customData?.numItems  !== undefined)
+    custom_data.num_items   = event.customData.numItems;
 
   // ── Assemble CAPI payload ─────────────────────────────────────────────────
   const body: Record<string, unknown> = {

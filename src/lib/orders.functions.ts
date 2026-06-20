@@ -268,7 +268,8 @@ export const placeOrder = createServerFn({ method: "POST" })
           userAgent: data.meta?.user_agent,
         },
         customData: {
-          value:    total,
+          // value must be a float — toFixed(2) then re-parse guarantees a numeric float
+          value:    parseFloat(total.toFixed(2)),
           currency: "EGP",
         },
       });

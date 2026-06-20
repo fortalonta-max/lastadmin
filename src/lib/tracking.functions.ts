@@ -24,6 +24,9 @@ const TrackEventInput = z.object({
   fbp:          z.string().max(200).optional(),
   fbc:          z.string().max(200).optional(),
   user_agent:   z.string().max(500).optional(),
+  // Advanced Matching — pass from form state when already filled by the user
+  phone:        z.string().max(30).optional(),
+  email:        z.string().email().max(254).optional(),
 });
 
 export type TrackEventInput = z.infer<typeof TrackEventInput>;
@@ -36,6 +39,8 @@ export const trackCapiEvent = createServerFn({ method: "POST" })
         eventName: data.event_name,
         eventId:   data.event_id,
         userData: {
+          email:     data.email,
+          phone:     data.phone,
           fbp:       data.fbp,
           fbc:       data.fbc,
           userAgent: data.user_agent,
