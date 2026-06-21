@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import { useCart, formatCurrency } from "@/lib/cart";
 import { fetchSettings } from "@/lib/storefront";
 import { placeOrder } from "@/lib/orders.functions";
-import { trackPixel, getPixelCookies } from "@/lib/meta-pixel";
+import { trackPixel, getPixelCookies, updatePixelAdvancedMatching } from "@/lib/meta-pixel";
 import { trackCapiEvent } from "@/lib/tracking.functions";
 import { getUtm } from "@/lib/utm";
 import { Calendar } from "@/components/ui/calendar";
@@ -52,6 +52,24 @@ function formatTime(slot: string): string {
   const ampm = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+/**
+ * Normalise a raw phone number to E.164 format for Advanced Matching.
+ * Assumes Egyptian numbers (+20) when no country code is present.
+ *   - "01012345678"  →  "+201012345678"
+ *   - "201012345678" →  "+201012345678"
+ *   - "1012345678"   →  "+201012345678"
+ */
+function formatPhoneE164(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  // Already has the Egyptian country code (20…, 12+ digits total)
+  if (digits.startsWith("20") && digits.length >= 12) return `+${digits}`;
+  // Local format with leading 0: 01xxxxxxxxx
+  if (digits.startsWith("0")) return `+20${digits.slice(1)}`;
+  // Bare digits without leading 0 or country code
+  return `+20${digits}`;
 }
 
 /** Format a Date as YYYY-MM-DD (local) */
@@ -212,12 +230,22 @@ function CheckoutPage() {
     // value must be a float for both the browser pixel and CAPI
     const initiateValue = parseFloat(subtotal.toFixed(2));
 
+    // ── Advanced Matching data (from form if already partially filled) ────────
+    // InitiateCheckout fires on mount so the form is often empty; we still
+    // pass whatever is available so Meta can match returning users.
+    const nameParts   = form.name.trim().split(/\s+/).filter(Boolean);
+    const firstName   = nameParts[0];
+    const lastName    = nameParts.slice(1).join(" ");
+    const e164Phone   = form.phone.trim() ? formatPhoneE164(form.phone.trim()) : undefined;
+
+    // Push Advanced Matching into the browser pixel before the track call so
+    // Meta associates this event with the user's hashed identity.
+    void updatePixelAdvancedMatching({ firstName, lastName, phone: e164Phone, country: "eg" });
+
     // Browser pixel (client-side)
     trackPixel("InitiateCheckout", { value: initiateValue, currency: "EGP", num_items: items.length }, eventId);
 
     // Server-side CAPI — same event_id for deduplication.
-    // Pass phone from form state if the user has already filled it in — this
-    // improves Advanced Matching quality without delaying the event fire.
     submitTrackCapiEvent({
       data: {
         event_name: "InitiateCheckout",
@@ -228,7 +256,10 @@ function CheckoutPage() {
         fbp,
         fbc,
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
-        phone:      form.phone.trim() || undefined,
+        phone:      e164Phone,
+        first_name: firstName || undefined,
+        last_name:  lastName  || undefined,
+        country:    "eg",
       },
     }).catch((e: unknown) => console.error("[CAPI] InitiateCheckout failed:", e));
   }, [isLoaded, items.length, subtotal]);
@@ -308,6 +339,21 @@ function CheckoutPage() {
           utm: getUtm(),
         },
       });
+      // ── Advanced Matching — full form data is available at Purchase time ──
+      const purchaseNameParts = form.name.trim().split(/\s+/).filter(Boolean);
+      const purchaseFirstName = purchaseNameParts[0] ?? "";
+      const purchaseLastName  = purchaseNameParts.slice(1).join(" ");
+      const purchasePhone     = formatPhoneE164(form.phone.trim());
+
+      // Update the browser pixel's advanced matching with full identity data
+      // before firing the Purchase event so Meta can attribute it correctly.
+      await updatePixelAdvancedMatching({
+        firstName: purchaseFirstName,
+        lastName:  purchaseLastName,
+        phone:     purchasePhone,
+        country:   "eg",
+      });
+
       // value must be a float — toFixed(2) then re-parse guarantees a numeric float
       trackPixel(
         "Purchase",

@@ -86,3 +86,66 @@ export function getPixelCookies(): { fbp?: string; fbc?: string } {
     fbc: cookies["_fbc"] ?? undefined,
   };
 }
+
+/**
+ * SHA-256 hex digest — client-side equivalent of the server-side helper in
+ * capi.server.ts. Used to pre-hash PII before passing it to fbq('init', ...).
+ * Input is lowercased and trimmed before hashing to match Meta's normalisation.
+ */
+async function sha256HexClient(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(s.trim().toLowerCase()),
+  );
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export interface PixelAdvancedMatchingData {
+  firstName?: string;
+  lastName?: string;
+  /** E.164-formatted phone, e.g. "+201012345678". Non-digits are stripped before hashing. */
+  phone?: string;
+  /** 2-letter ISO 3166-1 alpha-2 country code, e.g. "eg". */
+  country?: string;
+}
+
+/**
+ * Push Advanced Matching user data into the browser pixel by calling
+ * fbq('init', pixelId, hashedUserData) after the pixel is already loaded.
+ *
+ * Meta allows re-calling fbq('init') to supply or update matched fields.
+ * All PII fields are SHA-256 hashed client-side before passing to fbq,
+ * matching the normalisation applied by the server-side CAPI path.
+ *
+ * Call this before firing a track event to maximise the Event Match Quality
+ * score for that event.
+ */
+export async function updatePixelAdvancedMatching(
+  userData: PixelAdvancedMatchingData,
+): Promise<void> {
+  if (typeof window === "undefined" || !window.fbq || !window.__fbqLoaded) return;
+  const pixelId = window.__fbqLoaded;
+
+  const hashed: Record<string, string> = {};
+
+  if (userData.firstName?.trim())
+    hashed.fn = await sha256HexClient(userData.firstName);
+
+  if (userData.lastName?.trim())
+    hashed.ln = await sha256HexClient(userData.lastName);
+
+  if (userData.phone) {
+    // Strip non-digits (removes the leading "+") then hash — matches Meta's expectation
+    const digits = userData.phone.replace(/\D/g, "");
+    if (digits) hashed.ph = await sha256HexClient(digits);
+  }
+
+  if (userData.country?.trim())
+    hashed.country = await sha256HexClient(userData.country);
+
+  if (Object.keys(hashed).length > 0) {
+    window.fbq("init", pixelId, hashed);
+  }
+}

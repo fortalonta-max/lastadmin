@@ -4,6 +4,21 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { notifyNewOrder } from "@/lib/telegram";
 
+/**
+ * Normalise a raw phone number to E.164 format before passing to CAPI.
+ * Assumes Egyptian numbers (+20) when no country code is present.
+ *   "01012345678"  →  "+201012345678"
+ *   "201012345678" →  "+201012345678"
+ *   "1012345678"   →  "+201012345678"
+ */
+function formatPhoneE164(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("20") && digits.length >= 12) return `+${digits}`;
+  if (digits.startsWith("0")) return `+20${digits.slice(1)}`;
+  return `+20${digits}`;
+}
+
 const FlavorLine = z.object({
   flavor_id: z.string().uuid(),
   flavor_name: z.string().min(1).max(120),
@@ -255,14 +270,24 @@ export const placeOrder = createServerFn({ method: "POST" })
     // Uses the shared fireCapiEvent utility which handles logging, API version,
     // and test_event_code forwarding so events appear in Meta Test Events.
     try {
-      const [firstName, ...rest] = data.customer.name.split(" ");
+      // Split full name into first / last for Advanced Matching
+      const nameParts  = data.customer.name.trim().split(/\s+/).filter(Boolean);
+      const firstName  = nameParts[0] ?? "";
+      const lastName   = nameParts.slice(1).join(" ");
+      // Normalise phone to E.164 before hashing so Meta receives the standard
+      // format ("+201012345678") regardless of how the customer typed it.
+      const e164Phone  = formatPhoneE164(data.customer.phone);
+
       await fireCapiEvent({
         eventName: "Purchase",
         eventId,
         userData: {
-          phone:     data.customer.phone,
+          phone:     e164Phone,
           firstName,
-          lastName:  rest.join(" "),
+          lastName,
+          // country is fixed to Egypt (ISO 3166-1 alpha-2) since the store
+          // operates exclusively in Egypt (currency: EGP).
+          country:   "eg",
           fbp:       data.meta?.fbp,
           fbc:       data.meta?.fbc,
           userAgent: data.meta?.user_agent,

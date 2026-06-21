@@ -22,6 +22,10 @@ export interface CapiUserData {
   phone?: string;
   firstName?: string;
   lastName?: string;
+  // Address fields for Advanced Matching (Meta keys: ct, st, country)
+  city?: string;
+  state?: string;
+  country?: string;  // 2-letter ISO 3166-1 alpha-2, e.g. "eg"
   fbp?: string;
   fbc?: string;
   userAgent?: string;
@@ -74,15 +78,25 @@ export async function fireCapiEvent(event: CapiEvent): Promise<void> {
   }
 
   // ── Build user_data ───────────────────────────────────────────────────────
+  // All PII fields must be SHA-256 hashed (lowercase, trimmed) before sending.
   const user_data: Record<string, unknown> = {};
   if (event.userData?.email)
     user_data.em = [await sha256Hex(event.userData.email)];
   if (event.userData?.phone)
+    // phone arrives pre-formatted to E.164; strip non-digits before hashing
     user_data.ph = [await sha256Hex(event.userData.phone.replace(/\D/g, ""))];
   if (event.userData?.firstName)
     user_data.fn = [await sha256Hex(event.userData.firstName)];
   if (event.userData?.lastName)
     user_data.ln = [await sha256Hex(event.userData.lastName)];
+  // Address fields
+  if (event.userData?.city)
+    user_data.ct      = [await sha256Hex(event.userData.city)];
+  if (event.userData?.state)
+    user_data.st      = [await sha256Hex(event.userData.state)];
+  if (event.userData?.country)
+    user_data.country = [await sha256Hex(event.userData.country)];
+  // Non-PII cookie / header fields (not hashed per Meta spec)
   if (event.userData?.fbp)       user_data.fbp = event.userData.fbp;
   if (event.userData?.fbc)       user_data.fbc = event.userData.fbc;
   if (event.userData?.userAgent) user_data.client_user_agent = event.userData.userAgent;

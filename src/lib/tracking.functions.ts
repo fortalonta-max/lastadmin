@@ -24,9 +24,15 @@ const TrackEventInput = z.object({
   fbp:          z.string().max(200).optional(),
   fbc:          z.string().max(200).optional(),
   user_agent:   z.string().max(500).optional(),
-  // Advanced Matching — pass from form state when already filled by the user
+  // Advanced Matching — identity fields collected from form state
   phone:        z.string().max(30).optional(),
   email:        z.string().email().max(254).optional(),
+  first_name:   z.string().max(100).optional(),
+  last_name:    z.string().max(100).optional(),
+  // Advanced Matching — address fields
+  city:         z.string().max(100).optional(),
+  state:        z.string().max(100).optional(),
+  country:      z.string().max(2).optional(),   // 2-letter ISO 3166-1 alpha-2, e.g. "eg"
 });
 
 export type TrackEventInput = z.infer<typeof TrackEventInput>;
@@ -41,6 +47,11 @@ export const trackCapiEvent = createServerFn({ method: "POST" })
         userData: {
           email:     data.email,
           phone:     data.phone,
+          firstName: data.first_name,
+          lastName:  data.last_name,
+          city:      data.city,
+          state:     data.state,
+          country:   data.country,
           fbp:       data.fbp,
           fbc:       data.fbc,
           userAgent: data.user_agent,
