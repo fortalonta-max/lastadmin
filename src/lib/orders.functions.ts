@@ -72,7 +72,8 @@ export const placeOrder = createServerFn({ method: "POST" })
       .eq("id", 1)
       .single();
 
-    const deliveryFee = Number(settings?.delivery_fee ?? 0);
+    const baseDeliveryFee = Number(settings?.delivery_fee ?? 0);
+    const freeShippingThreshold = Number(settings?.free_shipping_threshold ?? 0);
 
     const boxIds = [...new Set(data.items.map((i) => i.box_id))];
     const { data: boxes, error: boxErr } = await supabaseAdmin
@@ -172,6 +173,9 @@ export const placeOrder = createServerFn({ method: "POST" })
       }
     }
 
+    const deliveryFee = freeShippingThreshold > 0 && (subtotal - discount) >= freeShippingThreshold
+      ? 0
+      : baseDeliveryFee;
     const total = Math.max(0, subtotal - discount + deliveryFee);
     const eventId = data.meta?.event_id ?? crypto.randomUUID();
 
